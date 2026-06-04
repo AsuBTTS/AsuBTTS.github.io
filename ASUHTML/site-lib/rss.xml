@@ -1,0 +1,1039 @@
+<?xml version="1.0" encoding="UTF-8"?><rss xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:atom="http://www.w3.org/2005/Atom" version="2.0"><channel><title><![CDATA[AsuBTTS]]></title><description><![CDATA[Obsidian digital garden]]></description><link>http://github.com/dylang/node-rss</link><image><url>site-lib/media/favicon.png</url><title>AsuBTTS</title><link></link></image><generator>Webpage HTML Export plugin for Obsidian</generator><lastBuildDate>Thu, 04 Jun 2026 08:24:22 GMT</lastBuildDate><atom:link href="site-lib/rss.xml" rel="self" type="application/rss+xml"/><pubDate>Thu, 04 Jun 2026 08:24:04 GMT</pubDate><ttl>60</ttl><dc:creator></dc:creator><item><title><![CDATA[3-环境光照]]></title><description><![CDATA[If the BRDF is glossy — small support!
+If the BRDF is diffuse — smooth!
+Does the observation remind you of something?
+这里的 support 是数学里的一个术语，意思是：函数不为零、真正起作用的那一块区域。放到 BRDF 里，它指的是：在方向空间中，哪些入射方向的光会对当前反射产生贡献。<img alt="Pasted image 20260503195914.png" src="pasted-image-20260503195914.png" target="_self"><br><img alt="Pasted image 20260503200452.png" src="pasted-image-20260503200452.png" target="_self">Step 1：计算反射方向计算：R=reflect(−V,N)R = reflect(-V, N)R=reflect(−V,N)表示镜面反射采样方向。Step 2：查询 specular cubemap根据 roughness 选择 mip level：specularColor = sample(prefilteredEnvMap, R, roughness)
+意思是：自动选择滤波立体角。Step 3：查询 BRDF LUT输入：N·Vroughness
+得到：scalebias
+计算：specular = specularColor × (F × scale + bias)
+完成镜面反射部分。 Step 4：计算 diffuse IBL查询 irradiance cubemap：irradiance = sample(irradianceMap, N)
+然后：diffuse = irradiance × albedo
+如果是金属：这一项通常接近 0因为金属几乎没有 diffuse。最终：Lo = diffuse + specular
+得到像素颜色。IBL<br><img alt="Pasted image 20260423230500.png" src="pasted-image-20260423230500.png" target="_self" style="width: 424px; max-width: 100%;"><br>
+<img alt="Pasted image 20260423230522.png" src="pasted-image-20260423230522.png" target="_self" style="width: 334px; max-width: 100%;"><br>
+<img alt="Pasted image 20260423230600.png" src="pasted-image-20260423230600.png" target="_self" style="width: 332px; max-width: 100%;">]]></description><link>1221-个人学习/games202/3-环境光照.html</link><guid isPermaLink="false">1221 个人学习/GAMES202/3-环境光照.md</guid><pubDate>Sun, 03 May 2026 12:05:17 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[GAMES101参考资料]]></title><description><![CDATA[ 已知： 成像平面：
+视野对应的近平面高度：
+设物体局部空间中的点为： MVP 变换 M -&gt; Local -&gt; World
+V - &gt; World -&gt; Camera
+P - &gt; Camera -&gt; Clip
+先经过模型变换 若物体先缩放、再绕 轴旋转 、再平移 ，则 再经过观察变换 ：
+若相机位置为 $ ，朝向先不额外旋转，则 所以 到这里已经转换为Camera Space
+再经过投影变换 ：
+设近平面距离为 ，远平面距离为 ，则 也就是把 和 代进去后： 所以 记 齐次裁剪：Clip Space 中真正发生的裁剪
+经过投影矩阵 之后，一个点从 Camera Space 进入 Clip Space：
+记： 这里还没有做透视除法。也就是说，此时我们并没有立刻得到：而是要先判断这个点是否位于可见空间内。在 OpenGL 风格的裁剪空间中，一个点可见，需要满足：也可以写成六个裁剪平面：更常见地写成：这六个不等式分别对应左、右、下、上、近、远六个裁剪平面。如果一个三角形的三个顶点都满足这些不等式，那么它完整保留。如果三个顶点都在某个裁剪平面外侧，那么它会被直接丢弃。如果一部分顶点在内部，一部分顶点在外部，那么这个三角形会被裁剪。GPU 会计算三角形边与裁剪平面的交点，然后生成新的顶点，用新的三角形或多边形替代原来的图元。 3. 透视除法 Clip Space -&gt; NDC[-1,1]
+然后做透视除法，从 Clip Space 进入 NDC： 于是：
+此时坐标范围通常在： NDC -&gt; Screen Coords
+横坐标映射为： 纵坐标映射为： 综上，从 Local Space 一直到 Pixel Coords 的完整过程就是：前面的
+Local Space World Space
+World Space Camera Space
+也就是：这部分和透视投影完全一样。真正不一样的是 Camera Space Clip Space 这一步。若正交观察盒范围为：
+左边界：
+右边界：
+下边界：
+上边界：
+近平面：
+远平面：
+则使用正交投影矩阵：于是：仍然写作：但由于正交投影矩阵最后一行是：所以通常有：因此：也就是说这里不会像透视投影那样出现“近大远小”。正交投影的完整流程为：其中最后的屏幕映射仍然是：GAMES101 HW3的bump_mappingEigen::Vector3f bump_fragment_shader(const fragment_shader_payload&amp; payload) { Eigen::Vector3f ka = Eigen::Vector3f(0.005, 0.005, 0.005); Eigen::Vector3f kd = payload.color; Eigen::Vector3f ks = Eigen::Vector3f(0.7937, 0.7937, 0.7937); auto l1 = light{{20, 20, 20}, {500, 500, 500}}; auto l2 = light{{-20, 20, 0}, {500, 500, 500}}; std::vector&lt;light&gt; lights = {l1, l2}; Eigen::Vector3f amb_light_intensity{10, 10, 10}; Eigen::Vector3f eye_pos{0, 0, 10}; float p = 150; Eigen::Vector3f color = payload.color; Eigen::Vector3f point = payload.view_pos; Eigen::Vector3f normal = payload.normal; float kh = 0.2, kn = 0.1; // TODO: Implement bump mapping here // Let n = normal = (x, y, z) // Vector t = (x*y/sqrt(x*x+z*z),sqrt(x*x+z*z),z*y/sqrt(x*x+z*z)) // Vector b = n cross product t // Matrix TBN = [t b n] // dU = kh * kn * (h(u+1/w,v)-h(u,v)) // dV = kh * kn * (h(u,v+1/h)-h(u,v)) // Vector ln = (-dU, -dV, 1) // Normal n = normalize(TBN * ln) float x = normal.x(); float y = normal.y(); float z = normal.z(); Eigen::Vector3f t(x*y/sqrt(x*x+z*z),sqrt(x*x+z*z),z*y/sqrt(x*x+z*z)); Eigen::Vector3f b = normal.cross(t); Eigen::Matrix3f TBN; TBN &lt;&lt; t.x(),b.x(),normal.x(), t.y(),b.y(),normal.y(), t.z(),b.z(),normal.z(); float u = payload.tex_coords.x(); float v = payload.tex_coords.y(); float w = payload.texture-&gt;width; float h = payload.texture-&gt;height; u = std::max(0.0f, std::min(u, 0.999f)); v = std::max(0.0f, std::min(v, 0.999f)); float u1 = std::max(0.0f, std::min(u + 1.0f / w, 0.999f)); float v1 = std::max(0.0f, std::min(v + 1.0f / h, 0.999f)); float dU = kh * kn * ( payload.texture-&gt;getColor(u1, v).norm() - payload.texture-&gt;getColor(u, v).norm() ); float dV = kh * kn * ( payload.texture-&gt;getColor(u, v1).norm() - payload.texture-&gt;getColor(u, v).norm() ); Eigen::Vector3f ln(-dU,-dV,1); normal = (TBN*ln).normalized(); Eigen::Vector3f result_color = {0, 0, 0}; result_color = normal; return result_color * 255.f; }
+<img alt="Pasted image 20260327150559.png" src="9966-files-library/pasted-image-20260327150559.png" target="_self" style="width: 542px; max-width: 100%;"><br><img alt="Pasted image 20260331215012.png" src="9966-files-library/pasted-image-20260331215012.png" target="_self" style="width: 342px; max-width: 100%;">
+Function Render() 发射光线，调用CastRay，返回RGB到framebuffer
+成像平面 平面高度 对于Screen Coords 上 (i,j) 将Pixel Coords 转换回 NDC[0,1]
+映射方法： NDC -&gt; Screen Space[-1,1] Screen Space -&gt; Camera Space Camera Space -&gt; Ray Direction
+Camera at (i,j)映射到的对应点
+射线方向自然为 归一化：
+framebuffer[m++] = castRay(eye_pos, dir, scene, 0); castRay() 追踪光线，调用求交判断函数，分不同材质情况算颜色
+void Renderer::Render(const Scene&amp; scene) { std::vector&lt;Vector3f&gt; framebuffer(scene.width * scene.height); float scale = tan(deg2rad(scene.fov * 0.5)); float imageAspectRatio = scene.width / (float)scene.height; Vector3f eye_pos(-1, 5, 10); int m = 0; for (uint32_t j = 0; j &lt; scene.height; ++j) { for (uint32_t i = 0; i &lt; scene.width; ++i) { // generate primary ray direction float x = (2 * (i + 0.5) / (float)scene.width - 1) * imageAspectRatio * scale; float y = (1 - 2 * (j + 0.5) / (float)scene.height) * scale; // TODO: Find the x and y positions of the current pixel to get the // direction // vector that passes through it. // Also, don't forget to multiply both of them with the variable // *scale*, and x (horizontal) variable with the *imageAspectRatio* Vector3f dir = normalize(Vector3f(x, y, -1)); // Don't forget to normalize this direction! framebuffer[m++] = castRay(eye_pos, dir, scene, 0); // Don't forget to normalize this direction! } UpdateProgress(j / (float)scene.height); } UpdateProgress(1.f); // save framebuffer to file //file related codes here.... }
+Vector3f Scene::castRay(const Ray &amp;ray, int depth) const { if (depth &gt; this-&gt;maxDepth) { return Vector3f(0.0,0.0,0.0); } Intersection intersection = Scene::intersect(ray); Material *m = intersection.m; Object *hitObject = intersection.obj; Vector3f hitColor = this-&gt;backgroundColor; // float tnear = kInfinity; Vector2f uv; uint32_t index = 0; if(intersection.happened) { Vector3f hitPoint = intersection.coords; Vector3f N = intersection.normal; // normal Vector2f st; // st coordinates hitObject-&gt;getSurfaceProperties(hitPoint, ray.direction, index, uv, N, st); // Vector3f tmp = hitPoint; switch (m-&gt;getType()) { case REFLECTION_AND_REFRACTION: { Vector3f reflectionDirection = normalize(reflect(ray.direction, N)); Vector3f refractionDirection = normalize(refract(ray.direction, N, m-&gt;ior)); Vector3f reflectionRayOrig = (dotProduct(reflectionDirection, N) &lt; 0) ? hitPoint - N * EPSILON : hitPoint + N * EPSILON; Vector3f refractionRayOrig = (dotProduct(refractionDirection, N) &lt; 0) ? hitPoint - N * EPSILON : hitPoint + N * EPSILON; Vector3f reflectionColor = castRay(Ray(reflectionRayOrig, reflectionDirection), depth + 1); Vector3f refractionColor = castRay(Ray(refractionRayOrig, refractionDirection), depth + 1); float kr; fresnel(ray.direction, N, m-&gt;ior, kr); hitColor = reflectionColor * kr + refractionColor * (1 - kr); break; } case REFLECTION: { float kr; fresnel(ray.direction, N, m-&gt;ior, kr); Vector3f reflectionDirection = reflect(ray.direction, N); Vector3f reflectionRayOrig = (dotProduct(reflectionDirection, N) &lt; 0) ? hitPoint + N * EPSILON : hitPoint - N * EPSILON; hitColor = castRay(Ray(reflectionRayOrig, reflectionDirection),depth + 1) * kr; break; } default: { // [comment] // We use the Phong illumation model int the default case. The phong model // is composed of a diffuse and a specular reflection component. // [/comment] Vector3f lightAmt = 0, specularColor = 0; Vector3f shadowPointOrig = (dotProduct(ray.direction, N) &lt; 0) ? hitPoint + N * EPSILON : hitPoint - N * EPSILON; // [comment] // Loop over all lights in the scene and sum their contribution up // We also apply the lambert cosine law // [/comment] for (uint32_t i = 0; i &lt; get_lights().size(); ++i) { auto area_ptr = dynamic_cast&lt;AreaLight*&gt;(this-&gt;get_lights()[i].get()); if (area_ptr) { // Do nothing for this assignment } else { Vector3f lightDir = get_lights()[i]-&gt;position - hitPoint; // square of the distance between hitPoint and the light float lightDistance2 = dotProduct(lightDir, lightDir); lightDir = normalize(lightDir); float LdotN = std::max(0.f, dotProduct(lightDir, N)); Object *shadowHitObject = nullptr; float tNearShadow = kInfinity; // is the point in shadow, and is the nearest occluding object closer to the object than the light itself? bool inShadow = bvh-&gt;Intersect(Ray(shadowPointOrig, lightDir)).happened; lightAmt += (1 - inShadow) * get_lights()[i]-&gt;intensity * LdotN; Vector3f reflectionDirection = reflect(-lightDir, N); specularColor += powf(std::max(0.f, -dotProduct(reflectionDirection, ray.direction)), m-&gt;specularExponent) * get_lights()[i]-&gt;intensity; } } hitColor = lightAmt * (hitObject-&gt;evalDiffuseColor(st) * m-&gt;Kd + specularColor * m-&gt;Ks); break; } } } return hitColor; } IntersectP负责根据AABB中的t_enter和t_exit判断光线是否与包围盒相交
+inline bool Bounds3::IntersectP(const Ray&amp; ray, const Vector3f&amp; invDir, const std::array&lt;int, 3&gt;&amp; dirIsNeg) const { // invDir: ray direction(x,y,z), invDir=(1.0/x,1.0/y,1.0/z), use this because Multiply is faster that Division // dirIsNeg: ray direction(x,y,z), dirIsNeg=[int(x&gt;0),int(y&gt;0),int(z&gt;0)], use this to simplify your logic // TODO test if ray bound intersects const Bounds3&amp; bounds = *this; double txMin = (bounds[dirIsNeg[0]].x - ray.origin.x) * invDir.x; double txMax = (bounds[1-dirIsNeg[0]].x - ray.origin.x) * invDir.x; double tyMin = (bounds[dirIsNeg[1]].y - ray.origin.y) * invDir.y; double tyMax = (bounds[1-dirIsNeg[1]].y - ray.origin.y) * invDir.y; double tzMin = (bounds[dirIsNeg[2]].z - ray.origin.z) * invDir.z; double tzMax = (bounds[1 - dirIsNeg[2]].z - ray.origin.z) * invDir.z; float t_enter = std::max(std::max(txMin, tyMin), tzMin); float t_exit = std::min(std::min(txMax, tyMax), tzMax); return (t_enter &lt;= t_exit) &amp;&amp; (t_exit &gt;= 0); } 函数getIntersection负责遍历BVH进行求交判断。如果相交得到hit点的相交信息。
+Intersection BVHAccel::getIntersection(BVHBuildNode* node, const Ray&amp; ray) const { // TODO Traverse the BVH to find intersection Vector3f invDir=(1.0/ray.direction.x,1.0/ray.direction.y,1.0/ray.direction.z); std::array&lt;int, 3&gt; dirIsNeg = { ray.direction.x &lt; 0, ray.direction.y &lt; 0, ray.direction.z &lt; 0 }; if(!node-&gt;bounds.IntersectP(ray,ray.direction,dirIsNeg)){ return Intersection(); } Intersection thit1,thit2; if(node-&gt;left){ thit1 = getIntersection(node-&gt;left,ray); } if (node-&gt;right){ thit2 = getIntersection(node-&gt;right,ray); } if(thit1.happened &amp;&amp; thit2.happened){ return (thit1.distance &lt; thit2.distance)?thit1:thit2; } else if(thit1.happened &amp;&amp; !thit2.happened){ return thit1; } else { //只有右边或者都没撞上，都没撞上也是false return hit2; } } <br><img alt="1680e1addcb62d51c3d68737e8e33080.png" src="9966-files-library/1680e1addcb62d51c3d68737e8e33080.png" target="_self" style="width: 539px; max-width: 100%;">
+SPP=128，非常好的效果了相关代码框架：
+castRay(const Ray ray, int depth) 在&nbsp;Scene.cpp&nbsp;中实现&nbsp;Path Tracing 算法
+核心步骤： 调用&nbsp;intersect(ray)&nbsp;获取交点&nbsp;Intersection 若未命中，返回&nbsp;Vector3f(0.0) 若命中光源，返回其自发光&nbsp;emit 采样光源（直接光照）： 调用&nbsp;sampleLight(pos, pdf)&nbsp;得到光源上的点&nbsp;lightPos&nbsp;和采样概率密度&nbsp;pdf_light 计算从交点指向光源的方向&nbsp;wi，及光线&nbsp;lightRay 调用&nbsp;intersect(lightRay)&nbsp;判断是否被遮挡 若无遮挡，计算&nbsp;f_r = material-&gt;eval(wo, wi, N) 计算几何项&nbsp;G = dot(N, wi) * dot(N_light, -wi) / r^2 累加直接光照贡献：L_dir = emit * f_r * G / pdf_light 间接光照（递归）： 根据&nbsp;RussianRoulette&nbsp;决定是否继续追踪 生成随机数&nbsp;P_RR，若&nbsp;P_RR &gt; RussianRoulette&nbsp;则终止 调用&nbsp;material-&gt;sample(wo, N)&nbsp;得到采样方向&nbsp;wi&nbsp;和&nbsp;pdf 构建新光线&nbsp;newRay，递归调用&nbsp;castRay(newRay, depth + 1) 计算&nbsp;f_r = material-&gt;eval(wo, wi, N) 间接光贡献&nbsp;L_indir = castRay(...) * f_r * dot(wi, N) / (pdf * RussianRoulette) 返回值：L_dir + L_indir（注意避免重复加光源自发光）
+Vector3f Scene::castRay(const Ray &amp;ray, int depth) const { // TODO Implement Path Tracing Algorithm here Vector3f L_dir(0.0f); Vector3f L_indir(0.0f); //Information from p Intersection inter = intersect(ray); if(!inter.happened) return Vector3f(0); if (inter.m-&gt;hasEmission()) return inter.m-&gt;getEmission(); Vector3f p = inter.coords; Vector3f N = inter.normal; Vector3f wo = -ray.direction; //sample light Intersection lightInter; float pdf_light = 0.0f; sampleLight(lightInter, pdf_light); //information of light Vector3f x = lightInter.coords; Vector3f Ni = lightInter.normal; Vector3f emit = lightInter.emit; //link p , l Vector3f ws = (x - p).normalized(); float dis_lp = (x - p).norm(); float dis_lp2_T = 1 /(dis_lp * dis_lp); float cosTheta = dotProduct(ws, N); float cosThetaP = dotProduct(-ws, Ni); // test whether blocked and cauculate Ray shadowRay(p + N*EPSILON, ws); Intersection block = intersect(shadowRay); if (block.happened &amp;&amp; (block.coords - x).norm() &lt; 0.01f){ L_dir = emit * inter.m-&gt;eval(wo,ws, N) * cosTheta * cosThetaP * dis_lp2_T /pdf_light; } //indir if (get_random_float() &lt; RussianRoulette) { Vector3f wi = inter.m-&gt;sample(wo, N).normalized(); Ray newRay(p + N * EPSILON, wi); Intersection q = intersect(newRay); if (q.happened &amp;&amp; !q.m-&gt;hasEmission()) { float pdf = inter.m-&gt;pdf(wo, wi, N); if (pdf &gt; 1e-6f) { L_indir = castRay(newRay, depth + 1) * inter.m-&gt;eval(wo, wi, N) * dotProduct(wi, N) / pdf / RussianRoulette; } } } return L_dir + L_indir; }
+]]></description><link>1221-个人学习/games101/games101参考资料.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/GAMES101参考资料.md</guid><pubDate>Mon, 27 Apr 2026 11:45:46 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[2-实时阴影算法]]></title><description><![CDATA[<img alt="Pasted image 20260419203638.png" src="9966-files-library/pasted-image-20260419203638.png" target="_self" style="width: 623px; max-width: 100%;">在Phong Shading模型中，只是对于物体处理了diffuse, specular 以及 ambient 的情况，是对是对各项局部光照分量的加和，并没能处理因物体间的遮挡关系而产生的阴影。Shadow Mapping 是一个非常直观的算法，对于当前着色点，我们将其变换到光源视角下得到对应深度，并与 shadow map 中记录的最近深度进行比较，从而判断该点是否被遮挡，得到可见度(visibility)信息，再进行渲染。我们在渲染之前，会预先在光源的视角下经过坐标变换得到在光源视角下的"屏幕"，得一张坐标范围为 的、一系列离散坐标 作为索引的表——Shadow Map，这张表存储着从光源出发打到的最近的场景点的深度。
+与 texture 类似，我们也把shadow map上的一个个格子叫做"texel"。在渲染时，我们从camera的视角出发，对于当前pixel打到的场景点p，我们把p的深度通过矩阵变换为光源视角下的深度 （不严谨地：物理直观上理解就是到达光源的距离）与当前点shadow map 的 texel上存储的深度 （物理直观上就是这个方向上，shadow map记录的最小距离）做比较。
+如果 ，便说明这一处有更近的物体遮挡光源，那么此处便应当是阴影。如果在精度允许的范围内 那么说明这一点能被光源照射到。（注意，必须强调精度允许范围，因为变换会损失精度，浮点数比较也应当注意精度问题）最后我们返回一个二值(0/1)变量 visibility 来说明是否可见。（在后续 PCF 等方法中，visibility 常会变成 之间的连续值。）<br>这个思路是直观的，天然适合处理点光源这类理想无面积光源所产生的硬阴影，也常用于其他单光源的直接阴影计算中。正如我们在<a data-href="5-Light Transport 1" href="1221-个人学习/games101/5-light-transport-1.html" class="internal-link" target="_self" rel="noopener nofollow">5-Light Transport 1</a>中提到的那样。这个算法看起来优雅，但是在实际操作过程中会遇到一个严重的问题：self-occlusion 现象（自遮挡）。如图，左为自遮挡产生的诡异纹路，右为shadow detached现象<br>
+<img alt="Pasted image 20260419213737.png" src="9966-files-library/pasted-image-20260419213737.png" target="_self" style="width: 588px; max-width: 100%;">
+[Image from RTR4]因为对于 shadow map 的一个 texel 而言，其覆盖一定的空间区域，对于在一区域中相近的两点 p, q 的情况，p 是相机视角下的着色点，经过深度变换得到了光源视角下的深度 。在该区域对应的texel上记录的对应的深度信息，是另一个临近点 q 的，这个 q 的深度会小于 p，这就导致我们会把p误判成阴影。为什么是误判呢？因为 p, q 很近，在物理空间上两点共处一个表面，理论上可见性应该是一样的，但是却因为 texel 离散化带来的精度问题（一个 texel 覆盖一片区域，里面很多连续点被压成一个深度值）导致了误判，就好像我自己遮挡了我自己，因此我们称之为自遮挡。为了解决这一个现象，我们引入一个值 作为以上误差原因的修正因子。因此比较布尔式变成：在实际操作中，bias 值的选取是一个需要调试的”累活“，如果矫正过度，那么会出现如上图所示的影子偏移（detached shadow）的情况。而对于不同的着色点，矫正幅度也不同，因此用同一个值也不够合适。因此我们也常常根据表面法线与光线方向的夹角来动态调节 bias，以适配不同位置着色点的修正幅度。下面介绍一种常用的 bias 计算方式。设表面法线为 ，光线方向为 ，则常见形式可写为： 其中： 表示表面法线与光线方向的夹角余弦 是控制变化幅度的系数 是一个最小偏移量，用来保证即使在正对光源时也保留基本容差
+float useShadowMap(sampler2D shadowMap, vec4 shadowCoord){ vec3 projCoords = shadowCoord.xyz / shadowCoord.w;//着色点p的深度 projCoords = projCoords * 0.5 + 0.5; //得到NDC //边缘判断 if(projCoords.x &lt; 0.0 || projCoords.x &gt; 1.0 || projCoords.y &lt; 0.0 || projCoords.y &gt; 1.0 || projCoords.z &lt; 0.0 || projCoords.z &gt; 1.0) { return 1.0; } //得到用于比较的两个深度信息 float currentDepth = projCoords.z; float closestDepth = unpack(texture2D(shadowMap, projCoords.xy)); //计算bias vec3 normal = normalize(vNormal); //vNormal是varying vec3 lightDir = normalize(uLightPos - vFragPos); //这两个是uniform float bias = max(0.006 * (1.0 - dot(normal, lightDir)), 0.0005); //判断并返回visibility 二值 return currentDepth &gt; closestDepth + bias ? 0.0 : 1.0;
+}
+基础 shadow mapping 算法很直观，但问题很明显，得到的阴影硬且脏，边缘生硬（我们称之为 hard shadow, 硬阴影），并且容易出现明显的锯齿与块状感。硬阴影（左）与软阴影（右）<br>
+<img alt="Pasted image 20260419224300.png" src="9966-files-library/pasted-image-20260419224300.png" target="_self" style="width: 677px; max-width: 100%;">
+[RenderMan]在一个真实的世界中，我们见到的阴影边缘通常不是 shadow mapping 那样的硬阴影（这只会在少数情况下发生）。真实阴影边缘区域存在由深到浅的过渡，即软阴影（Soft Shadow）。因此我们需要进一步优化 Shadow Mapping 来实现软阴影。在之前的模型中，我们对于当前着色点，要么认为它完全处于阴影中，要么认为它完全可见——这种“非黑即白”的判断方式，与 shadow map 本身的离散 texel 结构叠加起来，会使阴影边界显得更加生硬，并产生明显锯齿。怎么解决呢？一个思路是不再“非黑即白”，承认世界存在“灰色地带”。也就是说，我们认为边缘的点并不是完全不可见，也不是完全可见。基于这样的思维，我们就不能简单认为 visbility 是一个二值函数，完全可以把它当作是在0~1之间的任意百分比的值。这样阴影边缘的点的可见性便会有类似100%, 90%, 50%, 20%, 5%, 0%这样的变化，便可以得到渐变的灰度了。PCF算法示意图，采样与权重<br>
+<img alt="Pasted image 20260419224520.png" src="9966-files-library/pasted-image-20260419224520.png" target="_self" style="width: 267px; max-width: 100%;">
+[GAMES202]显然，我们可以进行采样与滤波来实现这一操作。也就是：对于当前着色点在 shadow map 上投影得到的位置，我们不仅比较其对应 texel 的深度，还会对其周围一定邻域内的 texel 一并做深度比较。最终，我们能得到不同的01值的分布。在最直观的均匀加权情况下，可见样本数与总采样数的比值，就可以视为该位置的可见性估计。不过，在更一般的滤波模型中，邻域内各采样点的权重未必相同；权重通常会与采样点到中心位置的距离有关。也就是说，我们在对邻域采样时，还要引入权重的处理。对于当前Shadow采样点 p，邻域的一个点 q，定义一个权重函数 ，一个判断遮挡的二值函数 ，算法可以表达为如下卷积格式：更进一步地，对于场景的着色点 x，展开二值函数，最终的可见性可以表述为：
+总结起来就是：
+在 shadow map 上取一组邻域采样点； 对每个采样点分别做一次“ 是否大于该处深度”的比较； 将得到的一组 0/1 可见性结果做平均，或更一般地做加权平均。
+因此这一算法被称作 Percentage Closer Filtering，简写为PCF。需要注意的是，PCF 得到的“软化边界”本质上来自邻域采样结果的平均，是一种视觉上的平滑；它并没有真正根据面光源几何关系去计算半影宽度，因此模糊范围通常是固定的。PCF 区别于基础 shadow mapping 的关键就是 visibility 成了一个比例，因此主要增加的内容是采样和加权平均。float PCF(sampler2D shadowMap, vec4 coords) { vec3 projCoords = coords.xyz / coords.w; projCoords = projCoords * 0.5 + 0.5; if(projCoords.x &lt; 0.0 || projCoords.x &gt; 1.0 || projCoords.y &lt; 0.0 || projCoords.y &gt; 1.0 || projCoords.z &lt; 0.0 || projCoords.z &gt; 1.0) { return 1.0; } float currentDepth = projCoords.z; vec3 normal = normalize(vNormal); vec3 lightDir = normalize(uLightPos - vFragPos); float bias = max(0.005 * (1.0 - dot(normal, lightDir)), 0.0005); // 生成当前采样点周围的一组泊松盘分布偏移，用于邻域采样 poissonDiskSamples(projCoords.xy); float visibility = 0.0; float filterRadius = 0.002; for(int i = 0; i &lt; PCF_NUM_SAMPLES; i++) { //在中心 uv 周围采样 vec2 sampleUV = projCoords.xy + poissonDisk[i] * filterRadius; //这里用 `unpack` 是因为该实现将深度值编码存入纹理中，采样后需要先解码。 float closestDepth = unpack(texture2D(shadowMap, sampleUV)); //每个样本做一次深度比较 if(currentDepth &gt; closestDepth + bias) { visibility += 0.0; } else { visibility += 1.0; } } //这里只做了等权平均 visibility /= float(PCF_NUM_SAMPLES); return visibility;
+}
+PCF 的核心思路，是通过对 shadow map 邻域内多个采样点分别做深度比较，再将结果平均，来得到一个位于 0~1 之间的 visibility。这样做确实能够有效缓解基础 shadow mapping 所产生的锯齿与生硬边界问题。 但是，PCF 的“软化”本质上来自固定采样邻域上的平均，因此它的模糊范围通常是固定的。也就是说，无论遮挡物与接收面的距离关系如何变化，阴影边界的模糊宽度往往都差不多。 这与真实世界中的软阴影并不一致。对于面积光源来说，阴影边界的过渡宽度并不是一个固定值，而是会随着遮挡体、接收点与光源之间的空间关系变化。通常来说： 接收点越远离遮挡物，半影区域越宽； 接收点越靠近遮挡物，阴影边界越锐利。
+也就是说，PCF并没有真正处理半影宽度随几何关系变化这一关系。 这就是 PCSS（Percentage Closer Soft Shadows） 要进一步解决的问题。在开启算法思想的描述前，我们先要明确如下概念：
+Blocker：遮挡物，挡住光源的物体 Umbra：本影，光源被完全挡住的区域 Penumbra：半影，光源被部分挡住的区域
+Receiver：接收阴影的表面
+面积光源、遮挡物与阴影平面的几何图像描述<br>
+<img alt="Pasted image 20260419232415.png" src="9966-files-library/pasted-image-20260419232415.png" target="_self" style="width: 306px; max-width: 100%;">
+[Fernado et al.]上图很好地描述了面积光源、遮挡物（blocker）与Receiver之间的几何关系。B 区域就是本影（Umbra）区域，w则是能被部分光照射到的半影（Penumbra）区域。通过相似三角形的原理，我们能得到如下几何关系：显然我们能通过该表达式得到如下推论： 若 ，说明 receiver 很靠近 blocker，此时半影宽度很小，阴影边界应当更锐利； 若 ，说明 receiver 离 blocker 更远，此时半影宽度会明显增大，阴影边界应当更柔和； 若 更大，则同样会带来更宽的半影。 不难看出，这印证了3.1我们讨论过的现实世界中的半影宽度与接收点和遮挡物距离的关系，同时也说明了光源面积如何影响半影宽度。有了这样的数值关系，我们就可以利用不同位置的半影宽度作为参考，动态调整filter size（滤波器的大小），从而实现更真实的光影效果。因此关键在于，如何定义遮挡物，又该如何寻找/判定遮挡物。在真实几何图像中，我们可以清楚地区分 blocker、receiver 与面积光源的位置关系；但在实际算法中，我们手里只有 shadow map 这张从光源视角记录下来的离散深度图。因此，“寻找遮挡物”这件事，本质上是在 shadow map 上对当前 receiver 前方可能存在的 blocker 做一个局部估计，也就是在当前 receiver 前方、当前局部区域内，对遮挡物深度做一个平均估计。PCSS算法示意图<br>
+<img alt="Pasted image 20260420001511.png" src="9966-files-library/pasted-image-20260420001511.png" target="_self" style="width: 624px; max-width: 100%;">
+[Fernado et al.]具体办法如下：对于当前着色点 ，将其投影到 shadow map 上，得到中心采样位置 ，以及它在光源视角下的深度 ，也就是 。接下来，我们以 为中心，在 shadow map 上取一个搜索邻域 ，对邻域内的样本点 逐一检查其深度 。如果某个样本满足：
+那么说明这个样本记录的表面比当前 receiver 更靠近光源。也就是说，它有可能位于 receiver 与光源之间，因此可以被看作一个 blocker 候选。 于是，我们可以把所有满足该条件的样本点收集起来，得到 blocker 候选样本的个数 。对这些点的深度求平均，就可以得到 blocker 的平均深度：
+如果在搜索邻域内一个 blocker 都没有找到，即 ，那么通常就说明当前点大概率没有被遮挡，可以直接返回 以上的流程我们称之为 Blocker Search。解决了blocker的定义与寻找的问题，我们就可以自然地给出PCSS的流程了：
+Blocker Search：在当前点附近搜索 blocker，并估计其平均深度。
+Penumbra Estimation：根据 blocker 深度与 receiver 深度，估计当前点的半影宽度，并据此确定 filter size。
+Percentage Closer Filtering：使用该 filter size 做一次自适应的 PCF。 findBlocker(...)：寻找 blocker 的平均深度 float findBlocker( sampler2D shadowMap, vec2 uv, float zReceiver ) { // findblocker判断也需要做bias矫正 vec3 normal = normalize(vNormal); vec3 lightDir = normalize(uLightPos - vFragPos); float bias = max(0.003 * (1.0 - dot(normal, lightDir)), 0.0005); //同时我们需要建立一个泊松采样环 poissonDiskSamples(uv); float searchRadius = 0.006; float blockerDepthSum = 0.0; int blockerCount = 0; for(int i = 0; i &lt; BLOCKER_SEARCH_NUM_SAMPLES;i++){ vec2 sampleUV = clamp(uv + poissonDisk[i] * searchRadius, 0.001, 0.999); float shadowDepth = unpack(texture2D(shadowMap, sampleUV)); if(shadowDepth + bias &lt; zReceiver) { blockerDepthSum += shadowDepth; blockerCount++; } } if(blockerCount == 0) { return -1.0; } return blockerDepthSum / float(blockerCount);
+} PCSS()
+#define LIGHT_WIDTH 0.05 float PCSS(sampler2D shadowMap, vec4 coords){ vec3 projCoords = coords.xyz / coords.w; projCoords = projCoords * 0.5 + 0.5; if(projCoords.x &lt; 0.0 || projCoords.x &gt; 1.0 || projCoords.y &lt; 0.0 || projCoords.y &gt; 1.0 || projCoords.z &lt; 0.0 || projCoords.z &gt; 1.0) { return 1.0; } float zReceiver = projCoords.z; // STEP 1: avgblocker depth float avgBlockerDepth = findBlocker(shadowMap,projCoords.xy,zReceiver); if(avgBlockerDepth &lt; 0.0) { return 1.0; } // STEP 2: penumbra size float penumbra = (zReceiver - avgBlockerDepth) * LIGHT_WIDTH / avgBlockerDepth; // STEP 3: filtering poissonDiskSamples(projCoords.xy); float visibility = 0.0; float filterRadius = penumbra * 0.18; vec3 normal = normalize(vNormal); vec3 lightDir = normalize(uLightPos - vFragPos); float bias = max(0.0045 * (1.0 - dot(normal, lightDir)), 0.0007); for(int i = 0; i &lt; PCF_NUM_SAMPLES; i++) { //在中心 uv 周围采样 vec2 sampleUV = clamp(projCoords.xy + poissonDisk[i] * filterRadius, 0.001, 0.999); float closestDepth = unpack(texture2D(shadowMap, sampleUV)); //每个样本做一次深度比较 if(zReceiver &gt; closestDepth + bias) { visibility += 0.0; } else { visibility += 1.0; } } visibility /= float(PCF_NUM_SAMPLES); return visibility; }
+PCSS 算法很好复现了现实经验中见到的半影与全影现象，生成的阴影效果也很好。但是PCSS 算法本身的复杂度比较高，每次都势必要进行一次 Blocker Search 和 Filter ，开销比较大。因此，我们希望能优化寻找遮挡物（Blocker Search）的过程。和 PCSS 类似，我们先要回到 Blocker 的定义与寻找中去。假设当前着色点深度为 ，我们把深度小于 的样本看作 Blocker，反之则是 Non-blocker。我们记录得到的 个 blocker 样本的平均深度为 ， 个 Non-blocker 样本的平均深度为 ，全部样本的平均深度为 ，显然，这几个量满足以下关系：进一步地，我们可以用概率论的视角做近似： 这揭示了一个新的思路：如果我们把每次要枚举的 texel 样本都当作随机变量，而这些随机变量服从某一个分布规律，这个分布规律告诉我们一定深度范围对应的概率。也就是说，只要知道这个分布的一些统计信息，就能近似估计“当前点落在这个分布中什么位置。在直觉上，可以先用正态分布来理解“均值和方差能够描述分布”的思想。分布与切比雪夫估计示意图<br>
+<img alt="Pasted image 20260420193627.png" src="9966-files-library/pasted-image-20260420193627.png" target="_self" style="width: 365px; max-width: 100%;">
+[GAMES202]但是在实际具体分布上，我们不一定要认为一定是一个正态分布或者是高斯分布。即使不知道具体分布形状，只靠均值和方差，也能借助切比雪夫不等式给出一个概率上界估计：对于 ，有：
+因此，关键的问题在于获取该随机变量分布的均值 和方差 。 设某一局部区域中的深度随机变量为 ，根据概率论的知识，它的均值与方差分别为：
+也就是说，如果我们能够得到某一区域内深度的一阶矩 与二阶矩 ，进而可以得到方差。这样一来我们在讨论 blocker 时得到的 的值就正好是可以通过切比雪夫不等式近似估计的。现在，我们通过切比雪夫不等式已经可以估计出遮挡物和非遮挡物部分各自的比例了，但是对于 的值（和 是等效的，我们知道一个现在就可以解出来另外一个了），我们又该如何是好呢？
+VSSM 又做了一个看起来很拍脑袋但又很大胆的假设：认为 。
+这个式子说明：我们就直观地假设不遮挡的采样点，应当和我们当前的着色点在一个局部几何平面上——也就是把当前 receiver 附近几何近似成局部平面。这样一来，我们也就能自然地解出 的值了：
+至此，我们就通过对局部深度分布的统计近似，以及 的局部平面假设，完成了对 Blocker Search 的近似加速。在实际操作中，我们可以在预先生成 shadow map 时，额外生成一张 square-depth map，用来记录深度平方 。这样在后续渲染时，只要我们得到采样范围内 和 的平均值，就可以先求出方差，再利用切比雪夫不等式对遮挡关系进行近似估计。在此思路中，对某一区域均值的计算依旧可能带来 的代价。因此我们必须为求均值的过程找到开销小的方法。 一种办法是利用硬件 MIPMAP。MIPMAP 的优点是速度快，也方便做插值；但它本质上是近似方法，因此误差会比较大。SAT in 1D<br>
+<img alt="PixPin_2026-04-20_20-14-18.png" src="9966-files-library/pixpin_2026-04-20_20-14-18.png" target="_self" style="width: 470px; max-width: 100%;">
+[GAMES202]另一种办法是利用 Summed Area Table（SAT），也就是前缀和的办法。我们先来看一维的情况，对于原数组为 ，定义前缀和：，则区间 的和为： 。SAT in 2D<br>
+<img alt="Pasted image 20260420203059.png" src="9966-files-library/pasted-image-20260420203059.png" target="_self" style="width: 697px; max-width: 100%;">
+[Gamboa et al.]在二维的情况下，设原图像/矩阵为 ，定义二维前缀和：
+根据简单的容斥原理，矩形区域 的和为：得到了对应区间的前缀和，我们就可以进一步得到均值：。这样就把区域求和变成 查询。这就是 VSSM (Variance Soft Shadow Mapping) 算法。我们可以总结成以下步骤： 记录统计量
+生成 shadow map 时，同时记录深度 和深度平方 ，用于后续计算局部区域的均值与方差。 近似估计 blocker
+对当前着色点深度 ，通过 MIPMAP 或 SAT 查询邻域内深度分布的均值 与方差 ，再利用切比雪夫不等式估计 blocker 的比例，并结合 的局部平面假设，近似反推出 blocker 的平均深度。 估计半影并滤波
+用 blocker 平均深度和 receiver 深度估计半影宽度，据此确定 filter size，完成最终的软阴影滤波。 漏光现象 Light leaking<br>
+<img alt="Pasted image 20260420235912.png" src="9966-files-library/pasted-image-20260420235912.png" target="_self" style="width: 365px; max-width: 100%;"><br>
+[<a data-tooltip-position="top" aria-label="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch08.html%5D" rel="noopener nofollow" class="external-link is-unresolved" href="https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch08.html%5D" target="_self">https://developer.nvidia.com/gpugems/GPUGems3/gpugems3_ch08.html]</a>信号连续处理较好（左），脉冲信号处理不好（右）<br>
+<img alt="Pasted image 20260420235700.png" src="9966-files-library/pasted-image-20260420235700.png" target="_self">
+[GAMES202]需要注意的是，VSSM 用统计量近似替代了显式采样，虽然效率更高，但也会带来一定误差，典型问题包括 漏光（light leaking） 和 非平面性伪影（non-planarity artifact）。关于漏光：切比雪夫不等式给出的只是一个上限，当实际深度分布与VSSM假设的“单峰、连续”分布不符时（例如，场景中有多个遮挡物，形成多峰分布），该估计会严重偏离实际值，导致低估遮挡概率，产生漏光。关于非平面性伪影：VSSM 只记录了深度的均值和方差，丢失了深度变化的具体模式。当核覆盖了曲率较大的区域时，统计模型无法区分“这是同一个弯曲表面上的连续变化”还是“两个不同深度平面的遮挡关系”。结果就是，本应因曲率而产生连续自阴影的区域，VSSM 错误地认为其中一部分被照亮，出现沿着曲面的亮纹。接下来我们简单介绍一个新的算法，Moment Shadow Mapping（MSM）。这种方法被设计出来是为了解决 VSSM 算法存在的漏光问题。我们可以将 light leaking 理解为：使用一阶矩和二阶矩对真实遮挡关系（或者说深度分布）的估计不够精确，因此 MSM 希望通过更高阶矩估计来改善分布拟合能力。在 VSSM 算法中，我们对 blocker 分布的模拟更多是单峰近似，而现实中的深度分布往往包含多个遮挡层。换句话说，真实 shadow map 的深度分布更接近一个阶梯函数，而不是单一连续分布。理论上存在这样一个关系：前 阶矩，可以近似表示一个最多包含 个台阶的分布函数。算法设计了一个跳跃性质的函数 ，用于表示当前像素前方 blocker 的累计分布情况，也就是： ，它实际上就是深度分布的累计分布函数（CDF）。跳跃函数<br>
+<img alt="Pasted image 20260422211836.png" src="9966-files-library/pasted-image-20260422211836.png" target="_self" style="width: 416px; max-width: 100%;">
+[Peters et al., Moment Shadow Mapping]MSM 的基本策略是使用前四阶矩近似恢复深度分布（通常四阶已经足够），也就是记录 ，然后通过这些矩估计 ，再进一步得到可见性因为存储了更高阶的矩，因此 shadow map 的存储开销会相应增加，通常需要使用 RGBA 纹理来记录四阶矩信息。不过相比 VSM，这种方法能够更准确描述多层 blocker 的分布，从而显著减少 light leaking 现象。PCSS 算法通过 Blocker Search 显式寻找遮挡物深度，从而估计半影大小，能够较好复现真实软阴影效果。但 Blocker Search 本身需要在 shadow map 邻域中进行多次采样，计算开销较大。因此我们希望找到一种方法，在不显式枚举 blocker 的情况下估计遮挡物距离。Distance Field Soft Shadows（DFSS）提供了另一种思路：直接利用距离场函数 SDF（Signed Distance Field） 估计 shading point 到最近遮挡物的距离，从而推导半影大小。定义距离场函数：
+其中 表示点位于物体外部， 表示点位于物体表面， 表示点位于物体内部。设当前着色点为 ，光线方向为 ，沿光线方向进行跳跃式 marching ——也就是根据当前点到当前 SDF 给出的 0 值球平面的半径大小来进行跳跃，直到满足 。相比光线追踪光照向量的固定步长检测相比，可以极大提高效率。ray marching 可以用下面的式子和图片进行描述：SDF : ray marching<br>
+<img alt="Pasted image 20260422235445.png" src="9966-files-library/pasted-image-20260422235445.png" target="_self" style="width: 369px; max-width: 100%;"><br>
+[<a data-tooltip-position="top" aria-label="https://docs.unrealengine.com/en-US/BuildingWorlds/LightingAndShadows/MeshDistanceFields/index.html%5D" rel="noopener nofollow" class="external-link is-unresolved" href="https://docs.unrealengine.com/en-US/BuildingWorlds/LightingAndShadows/MeshDistanceFields/index.html%5D" target="_self">https://docs.unrealengine.com/en-US/BuildingWorlds/LightingAndShadows/MeshDistanceFields/index.html]</a>判断光线命中遮挡物表面后，此时即可得到 shading point 到最近遮挡物的距离： ，这样我们就可以通过 marching 过程直接得到 blocker 的距离信息。在得到了与遮挡物的距离之后，估计 shading point 的可见度时，DFSS 又做了一个大胆的操作，其通过安全角的大小来判断被遮挡的程度，也就是可见度的大小。如下图左所示，从当前着色点出发一条光线 a，以及 ray marching 当前新的步进点的 SDF 0 值平面上，做过着色点的一条切线 b，这a，b 两条线的夹角就是安全角。我们可以将其理解为一个着色点的视角。这个视角越大，说明未被遮挡的部分就越多，可见性就越好。下图右显示了我们应当取用不同位置处最小的角度值。safe angle<br>
+<img alt="Pasted image 20260423000205.png" src="9966-files-library/pasted-image-20260423000205.png" target="_self" style="width: 583px; max-width: 100%;"><br>
+[<a data-tooltip-position="top" aria-label="https://docs.unrealengine.com/en-US/BuildingWorlds/LightingAndShadows/MeshDistanceFields/index.html%5D" rel="noopener nofollow" class="external-link is-unresolved" href="https://docs.unrealengine.com/en-US/BuildingWorlds/LightingAndShadows/MeshDistanceFields/index.html%5D" target="_self">https://docs.unrealengine.com/en-US/BuildingWorlds/LightingAndShadows/MeshDistanceFields/index.html]</a>接下来的问题就是如何计算这个安全角。显然角度的正弦值就是 SDF(p) 这个半径与步进点和着色点的距离的比值，那么这个角度也就是：
+直接使用反三角函数是精确的，但运算量会很大，我们通常会做一个聪明的基于正弦值的线性近似：
+其中 表示 marching 深度， 表示当前点到最近遮挡物距离， 为参数。这个式子的精妙之处在于限制在 0~1 的范围与 k 值调控上：如果 k 值过大，那么大部分都会被强行保留 1.0 的结果，因此安全角就会小，因此可见性就会越小，说明大部分被遮挡住，所以半影区域会很小。效果如下图：不同 k 值对于半影效应的影响<br>
+<img alt="Pasted image 20260423002824.png" src="9966-files-library/pasted-image-20260423002824.png" target="_self" style="width: 697px; max-width: 100%;"><br>
+[<a data-tooltip-position="top" aria-label="https://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm%5D" rel="noopener nofollow" class="external-link is-unresolved" href="https://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm%5D" target="_self">https://www.iquilezles.org/www/articles/rmshadows/rmshadows.htm]</a>DFSS 在渲染速率上显然是要更快的，但是 SDF 的计算和存储本身是非常贵的。一个优化是在生成 shadow map 之前，对静态 mesh 预先构建距离场函数 ，用于后续 shading 过程中快速查询 shading point 到最近表面的距离信息。加上这个预处理流程，我们总体步骤可以表述为：
+预处理：生成 Mesh Distance Field
+Ray marching：从当前 shading point 出发，沿光线方向进行 SDF marching，每一步前进距离取当前位置的距离场函数值 ；
+满足 时，认为光线命中最近遮挡物，并记录得到遮挡物距离 ；
+根据安全角估计当前点的可见度，利用该可见度调制直接光照强度，得到最终软阴影结果。
+]]></description><link>1221-个人学习/games202/2-实时阴影算法.html</link><guid isPermaLink="false">1221 个人学习/GAMES202/2-实时阴影算法.md</guid><pubDate>Wed, 22 Apr 2026 16:40:55 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[1-图形学API与shader语言]]></title><description><![CDATA[一次基本的实时渲染，可以先看成这样一条链：
+CPU 准备场景数据
+CPU 通过图形学 API 把数据和命令提交给 GPU
+GPU 执行图形管线
+Vertex Shader 处理顶点
+光栅化生成片元
+Fragment Shader 处理片元
+结果写入 framebuffer
+最终显示到屏幕上
+也就是：CPU 组织数据 → API 提交资源与命令 → GPU 执行 Shader 与光栅化 → 输出图像得到什么：
+顶点位置
+法线
+纹理坐标
+索引
+纹理图片
+变换矩阵
+光源参数
+相机参数
+用什么：
+应用程序代码
+模型资源
+图片资源
+数学计算结果
+做什么：CPU 先把“要画什么”描述清楚，也就是完成场景组织和数据准备。得到什么：
+buffer
+texture
+uniform
+shader program
+用什么：
+OpenGL
+WebGL
+DirectX
+Vulkan
+Metal
+WebGPU
+做什么：把 CPU 侧的数据上传到 GPU，并配置渲染流程。其中最常见的几类资源是：
+buffer：存顶点、索引等结构化数据
+texture：存可按坐标访问的数据，如颜色、深度、法线
+uniform：存一次 draw call 共享的参数
+shader program：GPU 要执行的着色器程序
+得到什么：
+顶点数据
+索引数据
+纹理资源
+uniform 参数
+shader 程序
+用什么：
+Vertex Shader
+光栅化
+Fragment Shader
+做什么：GPU 按照 draw call 的要求，把几何数据逐步变成屏幕上的像素结果。得到什么：
+每个顶点的 position、normal、uv、color
+整批共享的 uniform，如 M、V、P 矩阵
+用什么：
+attribute
+uniform
+做什么：
+计算顶点最终位置
+输出后续阶段还需要的数据
+典型形式：gl_Position = P * V * M * vec4(aPosition, 1.0);这一步得到的是顶点在裁剪空间中的位置，同时还会输出法线、纹理坐标、世界坐标等信息，供后续插值使用。得到什么：
+三角形覆盖到哪些屏幕区域
+会生成哪些片元
+每个片元对应的插值属性
+用什么：
+顶点着色器输出的位置
+顶点着色器输出的 varying 数据
+做什么：把三角形离散化成片元，并对顶点输出的数据自动插值，得到每个片元对应的法线、uv、颜色、坐标等信息。得到什么：
+插值后的法线
+插值后的纹理坐标
+插值后的世界坐标
+uniform 中的光源、材质参数
+texture 中采样出的值
+用什么：
+varying
+uniform
+texture
+做什么：计算这个片元最终输出什么颜色。例如：
+采样纹理
+计算光照
+混合环境光、漫反射、高光
+输出最终颜色
+典型形式：gl_FragColor = texture2D(uTexture, vUV);或gl_FragColor = vec4(finalColor, 1.0);得到什么：
+通过测试的片元颜色
+深度结果
+最终图像缓冲内容
+用什么：
+深度测试
+模板测试
+混合
+framebuffer
+做什么：把通过测试的片元结果写入 framebuffer，最终显示到屏幕上。Shader 是运行在 GPU 上的小程序。
+它不是完整应用，而是图形管线某个阶段的计算规则。常见类型包括：
+Vertex Shader
+Fragment Shader
+Geometry Shader
+Tessellation Shader
+Compute Shader
+基础实时渲染里最核心的是：
+顶点着色器
+片元着色器
+顶点着色器处理单个顶点的数据，例如：
+position
+normal
+uv
+color
+它的主要任务是：
+把顶点变换到裁剪空间
+输出后续需要插值传递的数据
+最关键的输出是：
+gl_Position
+典型形式：gl_Position = P * V * M * vec4(aVertexPosition, 1.0);这里完成的是：局部空间 → 世界空间 → 观察空间 → 裁剪空间片元着色器处理光栅化后生成的片元。
+它决定这个片元最终输出什么颜色。常用输入包括：
+插值后的法线
+插值后的坐标
+插值后的纹理坐标
+纹理采样结果
+光源参数
+材质参数
+基础形式通常是：gl_FragColor = vec4(color, 1.0);Shader 语言就是用来编写 GPU 着色器程序的语言。常见的 Shader 语言有：
+GLSL：OpenGL / WebGL 常用
+HLSL：DirectX 常用
+MSL：Metal 常用
+WGSL：WebGPU 常用
+你目前最常接触的是 GLSL。表示每个顶点独有的输入属性，例如：
+顶点位置
+法线
+UV
+例如：attribute vec3 aVertexPosition;它来自顶点缓冲，对每个顶点分别提供。表示一次 draw call 中共享的参数，例如：
+变换矩阵
+光源位置
+材质参数
+时间
+相机位置
+例如：uniform mat4 uProjectionMatrix;它对一批顶点或片元共同生效，不会在图元内部插值。用于顶点着色器输出、片元着色器输入的数据传递。
+它会在光栅化阶段自动插值。例如：varying vec3 vNormal;流程是：
+顶点着色器输出 vNormal
+光栅化阶段对三角形内部插值
+片元着色器接收当前片元对应的插值结果
+attribute vec3 aVertexPosition;
+uniform mat4 uModelViewMatrix;
+uniform mat4 uProjectionMatrix; void main(void) { gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
+}
+作用：
+读取顶点位置 进行变换 输出到 gl_Position #ifdef GL_ES
+precision mediump float;
+#endif void main(void) { gl_FragColor = vec4(1.0, 1.0, 1.0, 1.0);
+}
+作用：
+给每个片元输出纯白色 早期图形 API 中，许多流程是固定的，例如固定光照、固定纹理流程、固定变换方式。可编程管线出现后，我们可以自己写 Shader，决定：
+顶点怎么变换 法线怎么处理 光照怎么算 颜色怎么混合 阴影怎么做 现代图形学的重要变化之一，就是从固定功能管线转向可编程管线。现代实时图形中的大量效果都依赖 Shader，例如：
+Phong 光照 法线贴图 阴影映射 PBR 屏幕后处理 NPR 水体、火焰、描边、粒子效果 可以简单记成：图形学 API 决定资源和流程怎么组织，Shader 决定图形管线中的局部计算怎么发生。
+你这版已经很接近可用了。 要是你愿意，我下一步可以继续顺着这套风格给你写 **3. buffer / texture / uniform / attribute / varying 的关系**。
+]]></description><link>1221-个人学习/games202/1-图形学api与shader语言.html</link><guid isPermaLink="false">1221 个人学习/GAMES202/1-图形学API与shader语言.md</guid><pubDate>Sun, 19 Apr 2026 12:17:14 GMT</pubDate></item><item><title><![CDATA[5-Light Tracing 3]]></title><description><![CDATA[mostly FYI<img alt="Pasted image 20260406012728.png" src="9966-files-library/pasted-image-20260406012728.png" target="_self" style="width: 562px; max-width: 100%;">在图形学中，材质最核心的部分就是 BRDF，也就是：给定入射方向和出射方向，表面如何分配反射光。其实材质根本上就是BRDF规则。
+Diffuse / Lambertian：光在各个出射方向上均匀反射。
+Glossy：反射主要集中在镜面附近，但不是完美镜面。
+Reflective / Refractive：既可能发生镜面反射，也可能发生透射，因此更准确地说常用 BSDF 而不只是 BRDF。:contentReference[oaicite:1]{index=1}
+Lambertian材质<br>
+<img alt="Pasted image 20260406012900.png" src="9966-files-library/pasted-image-20260406012900.png" target="_self" style="width: 627px; max-width: 100%;">
+满足：其中 是 albedo（颜色）。在均匀入射光照下，它的出射 radiance 可写成：所以 Lambertian 的关键特征就是：方向上均匀，强度由 albedo 决定。glossy的例子<br>
+<img alt="Pasted image 20260406013027.png" src="9966-files-library/pasted-image-20260406013027.png" target="_self" style="width: 622px; max-width: 100%;"><br><img alt="Pasted image 20260406013056.png" src="9966-files-library/pasted-image-20260406013056.png" target="_self" style="width: 618px; max-width: 100%;">理想镜面反射满足：入射角等于反射角。反射方向关于法线对称。课件给出的反射方向写法为：并且：这是一种只在单一方向上出射的极端 BRDF。数学几何上：<br><img alt="Pasted image 20260406013202.png" src="9966-files-library/pasted-image-20260406013202.png" target="_self" style="width: 563px; max-width: 100%;">除反射外，光还可能穿过表面进入另一介质，这就是折射。折射发生在光进入新介质时，因此方向会改变。:contentReference[oaicite:4]{index=4}<br><img alt="Pasted image 20260406013236.png" src="9966-files-library/pasted-image-20260406013236.png" target="_self">
+折射 obeys Snell 定律：其中 分别是入射介质和透射介质的折射率。常见数值例如：空气约为 ，水约为 ，玻璃约为 ，钻石约为 。进一步可得：当光从高折射率介质射向低折射率介质，且入射角足够大时，根号内会变成负数，此时不会发生折射，而会出现 全反射（Total Internal Reflection）。<br>
+<img alt="Pasted image 20260406013341.png" src="9966-files-library/pasted-image-20260406013341.png" target="_self" style="width: 636px; max-width: 100%;"><br><img alt="Pasted image 20260406013458.png" src="9966-files-library/pasted-image-20260406013458.png" target="_self" style="width: 668px; max-width: 100%;">Fresnel 项描述的是：反射率会随着入射角变化。一个非常重要的现象是：当角度越来越接近 grazing angle（掠射角）时，反射会显著增强。
+Dielectric（绝缘体）：如水、玻璃，反射率通常在正入射较低，到掠射角快速升高。
+Conductor（导体）：如金属，整体反射率通常更高，而且角度变化曲线与绝缘体不同。<br>
+<img alt="Pasted image 20260406013534.png" src="9966-files-library/pasted-image-20260406013534.png" target="_self" style="width: 318px; max-width: 100%;"><img alt="Pasted image 20260406013549.png" src="9966-files-library/pasted-image-20260406013549.png" target="_self" style="width: 327px; max-width: 100%;">
+一句话记忆：玻璃类是“越斜越亮”，金属类则整体就很亮。精确 Fresnel 需要考虑偏振<br><img alt="Pasted image 20260406013747.png" src="9966-files-library/pasted-image-20260406013747.png" target="_self" style="width: 616px; max-width: 100%;">实际渲染中常用 Schlick 近似：其中：它简单、便宜，而且很常用。<br><img alt="Pasted image 20260406013905.png" src="9966-files-library/pasted-image-20260406013905.png" target="_self">微表面理论认为：粗糙表面在宏观上看是flat &amp; rough 的，在微观上由大量小镜面组成，每个 microfacet 都有自己的法线。于是 roughness 的本质，就和这些微法线的分布有关。
+一句话说：表面粗糙，不代表局部不镜面；只是镜面法线很乱。<br><img alt="Pasted image 20260406014003.png" src="9966-files-library/pasted-image-20260406014003.png" target="_self" style="width: 572px; max-width: 100%;">
+微表面 BRDF 的关键在于 微法线分布：
+分布越集中，材质越 glossy
+分布越分散，表现越接近 diffuse
+<br><img alt="Pasted image 20260406014558.png" src="9966-files-library/pasted-image-20260406014558.png" target="_self" style="width: 646px; max-width: 100%;">典型公式为：其中：
+：Fresnel term
+：shadowing-masking term
+：法线分布函数
+：half vector
+<br><img alt="Pasted image 20260406014839.png" src="9966-files-library/pasted-image-20260406014839.png" target="_self" style="width: 472px; max-width: 100%;">各向同性材质的关键是：绕法线旋转后外观不变。
+它不依赖绝对方位角，只依赖相对角度关系。再结合 reciprocity，还可以进一步写成关于 的形式。:<br><img alt="Pasted image 20260406014850.png" src="9966-files-library/pasted-image-20260406014850.png" target="_self" style="width: 516px; max-width: 100%;">
+各向异性材质的反射与表面底层结构方向有关，比如 brushed metal。
+它会明显依赖 azimuthal angle，因此不同方向看上去不一样。
+一句话说：isotropic 不认方向，anisotropic 很认方向。BRDF 有几个基本性质： Non-negativity Linearity<br>
+<img alt="Pasted image 20260406014957.png" src="9966-files-library/pasted-image-20260406014957.png" target="_self" style="width: 547px; max-width: 100%;">
+渲染方程对入射光是线性的： Reciprocity Energy Conservation 也就是说，BRDF 不能凭空制造能量。真实材质的 BRDF 往往很复杂，因此除了手推模型，也可以直接测量。动机包括：
+不必自己推导复杂散射模型
+自动包含真实世界中的散射效应
+能更准确渲染真实材质
+对产品设计、特效等很有用
+一般测量思路是：
+固定一个出射方向 ，移动光源去照亮表面；再对不同入射方向 测量响应。为了提高效率：
+若表面 isotropic，维度可从 4D 降到 3D
+reciprocity 可以让测量数减半 测量的难点包括：
+grazing angle 处要测得准
+specular 高频峰值需要足够密采样
+retro-reflection
+spatially-varying reflectance 等 常见表示方法之一是 tabular representation，直接把样本存表。比如 MERL BRDF Database 采用的就是规则采样表，但代价是存储量很大。高级光传输方法可以先分成两类：
+Unbiased：期望值始终等于真实结果，没有系统误差。
+Biased：存在系统误差，但有些方法在样本趋于无穷时仍会收敛到正确结果，这种叫 consistent。
+一句话记忆：unbiased 更“正”，biased 往往更“实用”。<br><img alt="Pasted image 20260406015520.png" src="9966-files-library/pasted-image-20260406015520.png" target="_self" style="width: 639px; max-width: 100%;">普通 path tracing 是从相机一路往场景里追踪；BDPT 则同时从 camera 和 light 两边各自生成子路径，再把两边端点连接起来形成完整路径。
+它适合处理“从光源那一侧看比较复杂”的传输路径，但实现难、速度也慢。<br><img alt="Pasted image 20260406015542.png" src="9966-files-library/pasted-image-20260406015542.png" target="_self" style="width: 632px; max-width: 100%;">MLT 是 MCMC 在渲染中的应用。它不是每次独立随机生成一条新路径，而是从当前路径出发，做局部扰动，得到下一条路径。优点是：对一些很难采到的复杂光路特别有效，而且仍然是 unbiased。
+缺点是：收敛速度不容易估计，不保证每个像素收敛均匀，所以图像常会显得“脏”，一般不太适合动画。<br><img alt="Pasted image 20260406015653.png" src="9966-files-library/pasted-image-20260406015653.png" target="_self"><br><img alt="Pasted image 20260406015717.png" src="9966-files-library/pasted-image-20260406015717.png" target="_self"><br><img alt="Pasted image 20260406015807.png" src="9966-files-library/pasted-image-20260406015807.png" target="_self">Photon Mapping 是一个典型的 biased 方法，而且分两阶段：
+Photon tracing：从光源发射 photon，让它们在场景里弹跳，并把落在 diffuse surface 上的 photon 记录下来。
+Photon collection / final gathering：从相机侧发路径，等打到 diffuse surface 时，再去附近收集 photon 估计光照。
+它特别擅长处理 Specular-Diffuse-Specular (SDS) 路径，也就是焦散这类效果。<br>
+<img alt="Pasted image 20260406015839.png" src="9966-files-library/pasted-image-20260406015839.png" target="_self" style="width: 383px; max-width: 100%;">
+它之所以 biased，是因为用了 local density estimation：用有限个 photon 在一个有限面积上的密度近似真实微分密度。
+小邻域会 noisy，大邻域会 blurry，所以它的偏差也可以很直观地理解成一种“模糊”。但随着 photon 变多，它又是 consistent 的。<br><img alt="Pasted image 20260406015922.png" src="9966-files-library/pasted-image-20260406015922.png" target="_self">VCM 可以看成是 BDPT + Photon Mapping 的结合。
+如果 BDPT 里两条子路径的端点没法直接连起来，也许它们虽然连不上，但彼此已经很近了，这时就可以采用类似 photon mapping 的 merging 思路，把“连接”扩展为“合并”。一句话说：connect 不上，就 merge。<br><img alt="Pasted image 20260406020009.png" src="9966-files-library/pasted-image-20260406020009.png" target="_self">Instant Radiosity 也常被归入 many-light 方法。核心想法是：
+被照亮的表面点，也可以看成新的光源；
+先从光源打出子路径；
+把这些路径终点当成 Virtual Point Lights (VPLs)；
+再像处理普通点光源一样去渲染场景。:contentReference[oaicite:8]{index=8}
+优点是快，在 diffuse 场景里效果通常不错。
+缺点是当 VPL 很靠近着色点时会出现 spike，而且不适合 glossy material。:contentReference[oaicite:9]{index=9}<br><img alt="Pasted image 20260406020130.png" src="9966-files-library/pasted-image-20260406020130.png" target="_self">参与介质不是只在表面发生作用，而是在 体积内部 发生吸收和散射。雾、云这一类都属于 participating media。<br>
+<img alt="Pasted image 20260406020111.png" src="9966-files-library/pasted-image-20260406020111.png" target="_self">
+在任意一点，光都可能被部分吸收、部分散射。描述散射角分布时，需要用 phase function。渲染时通常要随机采样：
+前进方向
+前进距离
+在散射点连接光源 一句话说：表面模型处理“边界”，介质模型处理“里面”。<br><img alt="Pasted image 20260406020215.png" src="9966-files-library/pasted-image-20260406020215.png" target="_self" style="width: 324px; max-width: 100%;"><img alt="Pasted image 20260406020242.png" src="9966-files-library/pasted-image-20260406020242.png" target="_self" style="width: 300px; max-width: 100%;">头发和毛发有自己专门的外观模型，不能简单拿普通表面 BRDF 糊过去。课里先提到较早的 Kajiya-Kay Model，再讲更经典的 Marschner Model。Marschner 模型把单根头发看成类似玻璃圆柱，并考虑三类主要光路：
+R：reflection
+TT：transmission-transmission
+TRT：transmission-reflection-transmission 对于动物毛发，还要进一步考虑 medulla 的作用。人类头发和动物毛发在内部结构上并不完全一样，所以动物 fur 的饱和、漫散射外观不能简单拿 human hair 模型代替。<br><img alt="Pasted image 20260406020328.png" src="9966-files-library/pasted-image-20260406020328.png" target="_self" style="width: 593px; max-width: 100%;"><br><img alt="Pasted image 20260406020424.png" src="9966-files-library/pasted-image-20260406020424.png" target="_self" style="width: 619px; max-width: 100%;"><br>
+<img alt="Pasted image 20260406020500.png" src="9966-files-library/pasted-image-20260406020500.png" target="_self" style="width: 539px; max-width: 100%;"><br><img alt="Pasted image 20260406020451.png" src="9966-files-library/pasted-image-20260406020451.png" target="_self" style="width: 556px; max-width: 100%;"><br><img alt="Pasted image 20260406020549.png" src="9966-files-library/pasted-image-20260406020549.png" target="_self" style="width: 672px; max-width: 100%;"><br>
+<img alt="Pasted image 20260406020535.png" src="9966-files-library/pasted-image-20260406020535.png" target="_self" style="width: 597px; max-width: 100%;">
+颗粒材料（granular material）指的是由大量小颗粒组成的材料。它的难点在于：如果把每个颗粒都显式建模，代价会很高。于是课里强调，可以使用 procedural definition 来避免逐粒建模。一句话说：颗粒很多时，通常不靠一个个建，而靠统计或程序方式描述。<br><img alt="Pasted image 20260406020749.png" src="9966-files-library/pasted-image-20260406020749.png" target="_self" style="width: 520px; max-width: 100%;"><br>
+<img alt="Pasted image 20260406020808.png" src="9966-files-library/pasted-image-20260406020808.png" target="_self" style="width: 506px; max-width: 100%;">半透明材料的一个关键现象是：光从某点进入后，可能从另一个点出来。
+这就违反了 BRDF 的基本假设，因为 BRDF 默认“入射点和出射点是同一个点”。因此要用 BSSRDF 来推广 BRDF。它写成：表示：在 点从 入射的微分辐照度，对 点沿 出射的 radiance 的影响。对应的广义渲染方程也要对 表面上的所有点和所有方向 积分。课里还提到经典的 Dipole Approximation，用两个点光源近似 subsurface scattering。一句话说：BRDF 是“点进点出”，BSSRDF 是“这点进，别点出”。<br><img alt="Pasted image 20260406020903.png" src="9966-files-library/pasted-image-20260406020903.png" target="_self">布料本质上是大量 twisted fibers 的集合，而且有两级 twist，结构比普通表面复杂得多。课里给了三种思路：
+Render as Surface：给定 weaving pattern，整体算成一个表面 BRDF。
+Render as Participating Media：把纤维的统计分布看成一种介质。
+Render as Actual Fibers：最直接，也最贵，把每根纤维都显式渲染。
+一句话说：cloth 可以当表面、当介质，也可以真的当一堆纤维。<br><img alt="Pasted image 20260406020958.png" src="9966-files-library/pasted-image-20260406020958.png" target="_self" style="width: 476px; max-width: 100%;">很多真实材料之所以不够真实，不是因为缺一个简单 BRDF，而是因为它们有大量细节。Lecture 18 后半在讲：普通 microfacet 是统计意义上的 roughness，但真实世界常常有更复杂、更局部、更高频的细节，例如 metallic flakes、复杂 normal map、glinty surface。课里重新回顾了 microfacet BRDF：然后指出：统计 NDF 和真实细节分布之间可能有差距。
+为了描述一个 pixel 内部更真实的细节分布，课里引入了 P-NDF 的思路，也就是 over a pixel 的法线分布。一句话说：统计粗糙度还不够时，就要开始研究“像素内部的细节分布”。<br>
+<img alt="Pasted image 20260406021016.png" src="9966-files-library/pasted-image-20260406021016.png" target="_self" style="width: 442px; max-width: 100%;">前面的很多渲染模型都建立在几何光学上，但有些真实现象需要波动光学才能更好解释，比如 CD、金属膜、手机屏幕、细划痕金属表面等。Lecture 18 把这部分称为最近趋势：Wave Optics。<br>
+<img alt="Pasted image 20260406021047.png" src="9966-files-library/pasted-image-20260406021047.png" target="_self" style="width: 644px; max-width: 100%;">
+一句话记忆：几何光学处理“光线怎么走”，波动光学处理“相位怎么干涉”。<br><img alt="Pasted image 20260406021138.png" src="9966-files-library/pasted-image-20260406021138.png" target="_self" style="width: 518px; max-width: 100%;">
+程序化外观的核心问题是：能不能不靠纹理，直接在运行时定义细节？
+答案是可以，通过实时计算 noise function。
+直接用 3D noise 定义内部结构
+用 thresholding 把 noise 变成二值模式
+用更复杂的 noise 组合生成木纹、石纹、细胞状结构等
+一句话说：procedural appearance 是“不要贴图，直接算出纹理感”。
+]]></description><link>1221-个人学习/games101/5-light-tracing-3.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/5-Light Tracing 3.md</guid><pubDate>Mon, 06 Apr 2026 07:18:16 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[7-Animation]]></title><description><![CDATA[Animation 的核心是：让事物动起来。
+从图形学角度看，它就是把场景表示为时间的函数，再连续输出图像序列，形成运动感。常见帧率：
+Film：24 fps
+Video：30 fps
+VR：90 fps
+关键帧动画的基本思路是：
+动画师给出少量 keyframes
+中间帧由助手或计算机生成，这叫 tweening
+也就是说，动画师主要决定关键姿态，系统负责把中间过程补出来。可以把一帧看成“很多参数组成的向量”，然后对这些参数随时间做插值。
+最简单的是线性插值，但通常不够平滑，所以更常用 spline 一类方法来得到更自然、可控的运动。<img alt="Pasted image 20260406150318.png" src="9966-files-library/pasted-image-20260406150318.png" target="_self" style="width: 412px; max-width: 100%;">物理动画的出发点是牛顿定律：力决定加速度，加速度再决定速度和位置的变化。物理动画不是直接画“它应该怎么动”，而是先给定力、质量、约束，再通过数值模拟让运动自己产生。
+比如抛体、布料、液体，都属于这一路思路。弹簧模型是动态图形里很经典的简化系统。
+最简单的弹簧遵循 Hooke 定律，弹力和形变量成正比。如果两点为 ，最简单写法可以记成：但这个模型默认弹簧想回到零长度，不够真实。更合理的弹簧应该有一个 rest length ：这样弹簧会趋向自然长度，而不是零长度。如果只有弹簧力，系统会一直振荡。
+所以要引入阻尼，让能量逐渐损失。最简单的阻尼直接和速度相关，但会把整体运动也一起减慢。
+更合理的是 internal damping，只对弹簧方向上的相对运动做阻尼，这样不会把整团物体的整体平移和旋转都无脑减速。<br><img alt="Pasted image 20260406150356.png" src="9966-files-library/pasted-image-20260406150356.png" target="_self">
+很多复杂物体都可以看成弹簧网络：
+rope
+cloth
+hair
+mass spring mesh
+而且系统的表现很大程度由连接结构决定。
+不同连边方式会影响：
+是否抗拉伸
+是否抗剪切
+是否抗弯曲
+所以 mass-spring 不只是“有弹簧就行”，结构本身就决定了物理行为。粒子系统把一个动态系统表示成大量粒子的集合。
+每个粒子都有自己的位置、速度，并受到各种力的作用。它的优点是：
+直观
+好实现
+易扩展
+问题是：粒子很多时会很贵，还常常需要邻域搜索或加速结构。常见粒子力包括：
+吸引 / 排斥
+重力
+弹簧力
+推进力
+阻尼、摩擦、空气阻力
+碰撞响应
+一个粒子系统每一帧通常做这些事：
+生成新粒子（如果需要）
+计算每个粒子的力
+更新位置和速度
+删除死亡粒子
+渲染
+课程里给了不少粒子系统例子：
+星系模拟
+粒子流体
+flocking / boids
+分子动力学
+crowd / rock dynamics
+这些都说明：简单局部规则叠加起来，可以涌现复杂群体行为。刚体模拟和粒子类似，只是状态更多。
+除了位置和速度，还要考虑：
+旋转角
+角速度
+力矩
+转动惯量
+所以刚体相当于“带旋转自由度的粒子”。<br><img alt="Pasted image 20260406151608.png" src="9966-files-library/pasted-image-20260406151608.png" target="_self" style="width: 393px; max-width: 100%;">课程里讲了一个简单的 position-based fluid 思路：
+把水看成许多小粒子
+假设不可压缩，也就是密度应尽量保持常数
+若某处密度偏了，就通过改粒子位置去纠正
+更新时可以沿密度梯度方向做修正
+它的好处是直观、稳定，适合图形学中的实际模拟。模拟大量物质时有两种经典视角：
+Lagrangian：跟着粒子走
+Eulerian：固定在空间网格上看物质流过
+前者像追踪每只鸟，后者像站在固定位置观察所有鸟飞过。<br><img alt="Pasted image 20260406151540.png" src="9966-files-library/pasted-image-20260406151540.png" target="_self" style="width: 367px; max-width: 100%;">MPM（Material Point Method） 是 Eulerian 和 Lagrangian 的混合：
+粒子携带材料属性
+网格负责数值积分
+粒子把信息传给网格
+网格更新后再插值回粒子
+所以它兼顾了粒子法和网格法的一些优点，在复杂材料模拟里很常见。<br><img alt="Pasted image 20260406150440.png" src="9966-files-library/pasted-image-20260406150440.png" target="_self" style="width: 374px; max-width: 100%;">运动学里常把角色看成一个 articulated skeleton。
+它通常是树结构，由关节连接不同骨段。常见关节类型：
+pin joint：1D 旋转
+ball joint：多自由度旋转
+prismatic joint：平移
+FK（Forward Kinematics） 的意思是：
+动画师给出关节参数
+系统根据骨架关系算出末端位置
+例如二维两段手臂里，给定每段角度，就能算出 end effector 的位置。
+所以 FK 是“已知角度，求位置”。<br><img alt="Pasted image 20260406150631.png" src="9966-files-library/pasted-image-20260406150631.png" target="_self" style="width: 354px; max-width: 100%;">IK（Inverse Kinematics） 正好相反：
+动画师给出 end effector 想到的位置
+系统反过来求各个关节角度
+所以 IK 是“已知目标位置，求姿态参数”。IK 难主要因为：
+可能有多个解
+这些解在 configuration space 里可能分散，也可能连在一起
+有时根本无解
+所以 IK 本质上是一个带约束的求解 / 优化问题。一般的多连杆 IK 往往不能手推解析解，于是常用数值法：
+先选一个初始姿态
+定义误差函数
+算误差对参数的梯度
+做 gradient descent、Newton method 等优化
+更进一步的 IK 还会考虑风格，不只是“到没到目标”，还要“像不像某种动作风格”。
+这就是 style-based IK 的方向。Rigging 可以理解为角色的高层控制系统。
+它提供更直观的控制手柄，让动画师更快地调姿态、形变和表情。它像木偶身上的线，但制作成本很高，因为既要艺术理解，也要技术实现。除了骨骼，也可以直接在表面之间做插值。
+比如先建很多张表情形状，再通过权重混合它们，这就是 blend shapes。最简单的做法是顶点位置线性组合，再让权重随时间变化。<br><img alt="Pasted image 20260406150707.png" src="9966-files-library/pasted-image-20260406150707.png" target="_self">Motion Capture 是一种 data-driven 动画方法：
+记录真实表演
+从数据中提取姿态随时间的变化
+再把这些运动迁移到角色上
+优点：
+快
+真实感高
+缺点：
+设备复杂且昂贵
+捕到的动作不一定符合艺术需求，后续还得改
+面部动画有个著名问题叫 uncanny valley（恐怖谷）。
+角色越接近真人，观众反而越容易在“不够真”的细节上感到不适。
+所以面部动画往往比一般动作更难做好。先从单个粒子出发。
+如果粒子的速度由位置和时间决定：那么它的运动满足一个一阶常微分方程：所以粒子模拟本质上是在解 ODE。真实问题里很少能手写解析解，所以通常用数值积分。
+也就是从初始位置出发，一步一步往前推进。<br><img alt="Pasted image 20260406150753.png" src="9966-files-library/pasted-image-20260406150753.png" target="_self" style="width: 550px; max-width: 100%;">
+最基本的方法是 Explicit Euler：它的优点是简单，缺点也很明显：不准，而且常常不稳定。Euler 法有两个核心问题： 误差积累 每一步都会有近似误差
+步长越大，误差越大 不稳定 误差可能不断放大
+最终导致系统发散、爆炸 所以在动画模拟里，稳定性是个很严肃的问题。<br><img alt="Pasted image 20260406150819.png" src="9966-files-library/pasted-image-20260406150819.png" target="_self">Midpoint 方法会先估一个中点，再用中点处的导数更新：它比显式 Euler 更准，也更稳定。Modified Euler 的思路是：
+用起点和终点速度的平均值来更新位置。
+比普通 Euler 更好，但仍然属于显式方法的改进版。自适应步长会根据误差自动调节 。一种常见思路：
+先走一步 再走两步 比较这两个结果
+若误差太大，就缩小步长重算
+它很实用，但有时会被迫把步子切得很小。Implicit Euler 用未来时刻的导数做当前步更新：它通常需要解非线性方程，计算更麻烦，但稳定性明显更好。
+所以在 stiff system 里很常见。<br><img alt="Pasted image 20260406151200.png" src="9966-files-library/pasted-image-20260406151200.png" target="_self" style="width: 371px; max-width: 100%;">
+Runge-Kutta 是一族更高级的 ODE 数值方法。
+其中最常用的是 RK4。它通过多次采样导数再加权组合，得到更高阶、更准确的更新。
+优点是对非线性系统表现更好。<br><img alt="Pasted image 20260406151222.png" src="9966-files-library/pasted-image-20260406151222.png" target="_self">这一类方法的核心是：
+先往前走一步
+再直接约束粒子的位置
+再由新位置反推速度
+优点：
+快
+简单
+稳定
+缺点：
+不够物理严格
+会耗散能量
+更像是“为了效果和稳定性服务”的方法
+<br><img alt="Pasted image 20260406151332.png" src="9966-files-library/pasted-image-20260406151332.png" target="_self">]]></description><link>1221-个人学习/games101/7-animation.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/7-Animation.md</guid><pubDate>Mon, 06 Apr 2026 07:18:05 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[4-Geometry]]></title><description><![CDATA[mostly FYI代数曲面：满足三元多项式方程的点集
+<img alt="Pasted image 20260327173143.png" src="9966-files-library/pasted-image-20260327173143.png" target="_self">
+便于判断点 inside/outside
+法向量容易求
+适合光线追踪
+适合CSG建模
+<br><img alt="Pasted image 20260327173933.png" src="9966-files-library/pasted-image-20260327173933.png" target="_self">
+CSG = 用简单几何体通过布尔运算构造复杂物体基本形式：
+<br><img alt="Pasted image 20260327174126.png" src="9966-files-library/pasted-image-20260327174126.png" target="_self" style="width: 570px; max-width: 100%;">
+我们不是直接插值“形状”而是插值：.
+例如：
+然后取： 作为新的表面,于是边界自然移动.<br>
+<img alt="Pasted image 20260327174822.png" src="9966-files-library/pasted-image-20260327174822.png" target="_self" style="width: 632px; max-width: 100%;"><br><img alt="Pasted image 20260327174929.png" src="9966-files-library/pasted-image-20260327174929.png" target="_self" style="width: 578px; max-width: 100%;">
+用一个网格存储隐式函数 f(x,y,z)f(x,y,z)f(x,y,z) 的采样值，并把 f=0 的位置作为曲面，通过插值恢复连续边界，相当于用离散 SDF 表示复杂形状（常用于流体、形变和体素建模）。通过递归或隐式函数生成具有自相似性、任意尺度都有细节的复杂结构，常用于模拟自然形态（如山脉、植物、海岸线），但难以精确控制具体形状。显式表示就是把曲面直接写成一个变量关于另外两个变量的函数（如 ），用函数值直接给出空间中点的位置关系。Point Cloud：用大量离散空间点 (x,y,z)直接表示物体表面的位置集合，能表达任意复杂几何但本身不包含拓扑结构，通常需转换为 mesh 才便于渲染。<br>
+<img alt="Pasted image 20260327175829.png" src="9966-files-library/pasted-image-20260327175829.png" target="_self" style="width: 474px; max-width: 100%;"><br><img alt="Pasted image 20260327180030.png" src="9966-files-library/pasted-image-20260327180030.png" target="_self" style="width: 489px; max-width: 100%;">
+Polygon Mesh：通过存储顶点及其连接关系（通常三角形或四边形）来表示物体表面结构，是图形学中最常用、便于渲染与计算的显式几何表示方法<br><img alt="Pasted image 20260327180059.png" src="9966-files-library/pasted-image-20260327180059.png" target="_self" style="width: 476px; max-width: 100%;">贝塞尔曲线是一种由控制点（control points）定义的参数曲线：设控制点为：
+则贝塞尔曲线表示为：其中：
+曲线起点为 b0
+曲线终点为 bn
+中间控制点影响曲线形状，但一般不在曲线上
+三次贝塞尔曲线最常见：b0, b1, b2, b3<br><img alt="Pasted image 20260327180704.png" src="9966-files-library/pasted-image-20260327180704.png" target="_self" style="width: 549px; max-width: 100%;">一种通过递归线性插值计算贝塞尔曲线上点的方法。基本思想：在控制点之间不断进行线性插值，直到得到最终曲线点。ex：二次贝塞尔曲线计算过程：第一步： 第二步：有：<br><img alt="Pasted image 20260330191108.png" src="9966-files-library/pasted-image-20260330191108.png" target="_self"><br>
+<img alt="Pasted image 20260330191306.png" src="9966-files-library/pasted-image-20260330191306.png" target="_self" style="width: 292px; max-width: 100%;"><br><img alt="Pasted image 20260330191347.png" src="9966-files-library/pasted-image-20260330191347.png" target="_self" style="width: 256px; max-width: 100%;">
+贝塞尔曲线满足端点插值与端点切线由相邻控制点决定、对仿射变换保持一致响应、始终位于控制点凸包内且便于几何处理，并常通过分段三次形式拼接以获得可控形状。
+其中曲线连接至少需满足 C0（端点重合）或进一步满足 C1（切线一致）以实现视觉平滑连接。<br>
+<img alt="Pasted image 20260330191523.png" src="9966-files-library/pasted-image-20260330191523.png" target="_self" style="width: 472px; max-width: 100%;"><br>
+<img alt="Pasted image 20260330191542.png" src="9966-files-library/pasted-image-20260330191542.png" target="_self" style="width: 472px; max-width: 100%;"><br><img alt="Pasted image 20260330191852.png" src="9966-files-library/pasted-image-20260330191852.png" target="_self" style="width: 583px; max-width: 100%;"><br>
+<img alt="Pasted image 20260330191918.png" src="9966-files-library/pasted-image-20260330191918.png" target="_self" style="width: 583px; max-width: 100%;"><br><img alt="Pasted image 20260330191939.png" src="9966-files-library/pasted-image-20260330191939.png" target="_self" style="width: 603px; max-width: 100%;"><br><img alt="Pasted image 20260330192017.png" src="9966-files-library/pasted-image-20260330192017.png" target="_self" style="width: 472px; max-width: 100%;"><img alt="Pasted image 20260330192032.png" src="9966-files-library/pasted-image-20260330192032.png" target="_self" style="width: 375px; max-width: 100%;"><br>
+<img alt="Pasted image 20260330192057.png" src="9966-files-library/pasted-image-20260330192057.png" target="_self" style="width: 616px; max-width: 100%;"><br><img alt="Pasted image 20260330192155.png" src="9966-files-library/pasted-image-20260330192155.png" target="_self" style="width: 449px; max-width: 100%;"><br><img alt="Pasted image 20260330192226.png" src="9966-files-library/pasted-image-20260330192226.png" target="_self" style="width: 492px; max-width: 100%;">网格正则化（Mesh Regularization）是指对三维网格模型进行平滑或优化，使其满足某种“规整”性质，常见于几何处理和数值模拟。核心目标：
+改善网格质量（避免狭长、退化三角形） 提高数值稳定性（如有限元分析） 保持几何特征的同时减少畸变 常见方法：
+面积/角度正则化：调整顶点使三角形趋于等边 拉普拉斯平滑：顶点移向邻域中心 各向异性正则化：沿特征方向保持，垂直方向平滑 ARAP（尽可能刚体）：局部保持形状刚性 典型应用：
+三维重建后处理 物理仿真（形变、流体） 纹理映射与参数化
+]]></description><link>1221-个人学习/games101/4-geometry.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/4-Geometry.md</guid><pubDate>Mon, 06 Apr 2026 06:49:37 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[6-Photography and Chromatology]]></title><description><![CDATA[图像可以理解为两部分的结合：
+Synthesis：在图形学中生成图像
+Capture：在现实中用相机采集图像
+所以 imaging 不只是“拍照”，也包括“生成”。<img alt="Pasted image 20260406135602.png" src="9966-files-library/pasted-image-20260406135602.png" target="_self" style="width: 402px; max-width: 100%;">相机成像的核心是：外界光线经过 小孔或镜头，落到 sensor 上形成图像。
+Pinhole camera：结构简单，所有光线都经过一个小孔成像，几何关系清楚，但进光量少。
+Lens camera：用镜头把来自同一点的更多光线汇聚到 sensor 上，因此图像更亮，也更实用。
+一句话说：小孔更“理想”，镜头更“实用”。
+Sensor：传感器，接收光，并在曝光期间累积辐照度。
+Shutter：快门，控制 sensor 暴露在光下的时间。
+Irradiance：单位面积上接收到的光功率。
+如果没有镜头，每个 sensor 点都会混合来自场景各处的光，像素值会变得很相似，因此很难形成清晰图像。<br><img alt="Pasted image 20260406135732.png" src="9966-files-library/pasted-image-20260406135732.png" target="_self">FOV（视场角)表示相机一次能看到的场景角范围。 对于给定 sensor 高度 和焦距 ，有：这个公式说明：FOV 由 焦距 和 sensor 尺寸 共同决定。<br><img alt="Pasted image 20260406135854.png" src="9966-files-library/pasted-image-20260406135854.png" target="_self" style="width: 173px; max-width: 100%;">
+在 sensor 大小固定时：
+焦距越小，FOV 越大
+焦距越大，FOV 越小
+常见例子（按 35mm 格式习惯）：
+17mm：广角
+50mm：标准
+200mm：长焦 一句话说：短焦看得宽，长焦看得窄。<br><img alt="Pasted image 20260406135940.png" src="9966-files-library/pasted-image-20260406135940.png" target="_self" style="width: 562px; max-width: 100%;">在镜头不变时：
+sensor 越大，看到的范围越大
+sensor 越小，画面越像被裁切
+所以小底传感器常常会带来 crop factor。
+如果想在更小 sensor 上保持同样的 FOV，就需要使用更短的焦距。曝光的基本关系是：其中：
+：Exposure
+：曝光时间
+：辐照度
+也就是：曝光 = 时间 × 落到 sensor 上的光强。摄影中控制曝光的三个主要变量是： Aperture（光圈） 控制进光量
+常用 f-number / f-stop 表示 Shutter speed（快门速度） 控制曝光时长 ISO gain（感光度） 控制信号放大强度 其中 f-number 定义为：
+：焦距
+：光圈直径
+所以：
+f-number 越小，光圈越大，进光越多
+f-number 越大，光圈越小，进光越少 <br><img alt="Pasted image 20260406140152.png" src="9966-files-library/pasted-image-20260406140152.png" target="_self" style="width: 632px; max-width: 100%;">
+快门时间越长，sensor 积分越久，进光越多，但更容易产生 motion blur
+**快门时间越短，进光越少，适合高速运动捕捉
+<br><img alt="Pasted image 20260406140612.png" src="9966-files-library/pasted-image-20260406140612.png" target="_self" style="width: 615px; max-width: 100%;"><br><img alt="Pasted image 20260406140450.png" src="9966-files-library/pasted-image-20260406140450.png" target="_self" style="width: 617px; max-width: 100%;"><br><img alt="Pasted image 20260406140517.png" src="9966-files-library/pasted-image-20260406140517.png" target="_self" style="width: 620px; max-width: 100%;">曝光参数不只影响亮度，也影响画面风格：
+快门变慢：运动模糊更明显
+ISO 变高：噪声更明显
+光圈变大：更容易产生浅景深
+所以摄影中的曝光控制其实总是在做权衡。真实镜头结构非常复杂，而且存在像差。
+为了分析方便，常用 thin lens approximation（薄透镜近似） 来代替真实镜头。在理想薄透镜模型中：
+平行于主轴进入的光线会经过焦点
+经过焦点进入的光线会平行于主轴射出 <br><img alt="Pasted image 20260406140738.png" src="9966-files-library/pasted-image-20260406140738.png" target="_self" style="width: 552px; max-width: 100%;">薄透镜满足经典公式：其中：
+：焦距
+：物距
+：像距
+这个公式说明：当物体距离变化时，清晰成像所需的 sensor / 像平面位置也会变化。:contentReference[oaicite:11]{index=11}如果物点没有准确成像在 sensor 平面上，它就不会形成一个理想点，而会形成一个小斑点，这个斑点叫 Circle of Confusion（CoC，弥散圆，不是混乱的圈子doge）。<br><img alt="Pasted image 20260406140908.png" src="9966-files-library/pasted-image-20260406140908.png" target="_self" style="width: 608px; max-width: 100%;">课里给出的关系是：以及：所以：
+CoC 与 光圈大小 成正比
+与 f-stop 成反比 :contentReference[oaicite:13]{index=13}
+一句话说：光圈越大，离焦斑越大。<br><img alt="Pasted image 20260406141144.png" src="9966-files-library/pasted-image-20260406141144.png" target="_self" style="width: 425px; max-width: 100%;">在 ray tracing 中模拟景深时，可以这样做：
+先设定 sensor 尺寸、焦距、光圈大小
+选定想要对焦的物体深度 由薄透镜公式求对应的像距 对 sensor 上每个像素，不再只从镜头中心打一条 ray
+而是在 lens plane 上随机采样多个点，再把这些光线汇聚到 in-focus 的目标点上 这样就能得到 defocus blur。
+本质上它是在模拟：同一个像素会通过镜头不同位置接收到不同方向的光。<br><img alt="Pasted image 20260406141118.png" src="9966-files-library/pasted-image-20260406141118.png" target="_self" style="width: 425px; max-width: 100%;"><br><img alt="Pasted image 20260406141212.png" src="9966-files-library/pasted-image-20260406141212.png" target="_self" style="width: 429px; max-width: 100%;">Depth of Field（景深） 是指：场景中有一段深度范围，在这个范围内的物体看起来仍然“足够清晰”。它和 CoC 直接相关：
+CoC 小到某个可接受范围内，就认为“清晰”
+超出这个范围，就认为“虚”
+一般规律：
+短焦距：景深更深
+小光圈：景深更深
+拍得远：景深更深
+长焦距 / 大光圈 / 近距离：景深更浅 <br><img alt="Pasted image 20260406141231.png" src="9966-files-library/pasted-image-20260406141231.png" target="_self" style="width: 630px; max-width: 100%;">全光函数（Plenoptic Function）试图描述：一个观察者可能看到的全部光信息。
+它把可见信息参数化为方向、位置、时间、波长等变量。课里最后写成类似：它意味着：从任意位置、任意方向、任意时间、任意波长出发所能看到的光，都可以由这个函数描述。
+：观察方向 ：intensity of light
+：时间 ：观察者位置
+如果先不考虑时间和颜色，再利用“真空中光沿直线传播”这一点，就可以把 plenoptic function 降维。
+课里进一步把 light field / lumigraph 组织成一个 4D 表示，常用 two-plane parameterization：
+一组坐标 表示位置
+一组坐标 表示方向 固定 ，让 变化，就对应一张图像。
+所以 light field 本质上是在存储：不同位置、不同方向上的光线集合。<br><img alt="Pasted image 20260406141729.png" src="9966-files-library/pasted-image-20260406141729.png" target="_self" style="width: 309px; max-width: 100%;"><br><img alt="Pasted image 20260406141813.png" src="9966-files-library/pasted-image-20260406141813.png" target="_self" style="width: 374px; max-width: 100%;"><br><img alt="Pasted image 20260406142001.png" src="9966-files-library/pasted-image-20260406142001.png" target="_self" style="width: 193px; max-width: 100%;">光场相机通过 microlens 设计，不再只记录每个位置上的总能量，还会记录更细的方向信息。
+可以理解为：
+原来一个像素只存一个 irradiance 值
+现在一个“块”里存了多个 radiance 方向样本 它最重要的功能是 computational refocusing：
+拍完之后再调整对焦位置
+本质上是在重新选择和组合光线方向 但代价也很明显：
+空间分辨率不足
+结构更复杂
+成本更高
+一句话说：光场相机用空间分辨率换来了方向信息和后期重聚焦能力。refocusing:<br>
+<img alt="Pasted image 20260406141927.png" src="9966-files-library/pasted-image-20260406141927.png" target="_self" style="width: 536px; max-width: 100%;"><br><img alt="Pasted image 20260406142258.png" src="9966-files-library/pasted-image-20260406142258.png" target="_self" style="width: 583px; max-width: 100%;">可见光本质上是电磁波的一部分，不同波长对应不同频率范围。
+牛顿用棱镜把太阳光分解成彩虹，说明白光可以分解为不同波长成分。讲的简单点：光有波长分布，颜色和这种分布有关。<br><img alt="Pasted image 20260406142400.png" src="9966-files-library/pasted-image-20260406142400.png" target="_self" style="width: 423px; max-width: 100%;">SPD（Spectral Power Distribution，谱功率分布） 描述的是：
+在每一个波长上，光有多少能量。它是光在物理层面最重要的描述之一。
+不同光源会有不同的 SPD，白天的蓝天、太阳直射、灯光，它们的光谱分布都不一样。
+SPD 还满足线性叠加。<br><img alt="Pasted image 20260406142425.png" src="9966-files-library/pasted-image-20260406142425.png" target="_self">线性叠加：<br>
+<img alt="Pasted image 20260406142445.png" src="9966-files-library/pasted-image-20260406142445.png" target="_self" style="width: 360px; max-width: 100%;">注意：颜色是人类感知现象，不是光本身的普遍属性。
+不同波长本身不是“颜色”，颜色是人眼和大脑对光谱刺激的感知结果。人眼的基本结构包括晶状体、瞳孔、视网膜等。
+其中真正负责感光的是视网膜上的感光细胞。<br><img alt="Pasted image 20260406144555.png" src="9966-files-library/pasted-image-20260406144555.png" target="_self" style="width: 304px; max-width: 100%;">视网膜上的感光细胞主要分为两类： Rods（杆状细胞）
+适合低照度环境，大约有 1.2 亿个，只能感知明暗，不能感知颜色。 Cones（锥状细胞）
+适合普通照明环境，大约有 600 万到 700 万个，负责颜色感知。
+Cones 有三种类型。 一句话说：杆状细胞管“亮不亮”，锥状细胞管“什么颜色”。<br><img alt="Pasted image 20260406142627.png" src="9966-files-library/pasted-image-20260406142627.png" target="_self" style="width: 516px; max-width: 100%;">三种锥状细胞分别是：
+S cone：对短波更敏感
+M cone：对中波更敏感
+L cone：对长波更敏感 人眼并不会逐波长读取完整光谱，而是只得到这三类锥细胞的响应值。
+因此人类视觉系统本质上接收到的是三维信号，这就是 Tristimulus Theory（三刺激值理论） 的基础。<br><img alt="Pasted image 20260406142734.png" src="9966-files-library/pasted-image-20260406142734.png" target="_self" style="width: 613px; max-width: 100%;"><br><img alt="Pasted image 20260406142751.png" src="9966-files-library/pasted-image-20260406142751.png" target="_self" style="width: 417px; max-width: 100%;">Metamerism（同色异谱） 指的是：
+两个不同的光谱，虽然物理分布不同，但它们在 S、M、L 三种锥细胞上产生相同响应，因此看起来颜色相同。这件事非常重要，因为它说明：
+显示设备不需要真的复现现实世界的完整光谱，只要产生一个在视觉上等效的刺激就行。一句话说：光谱可以不同，但看起来可以一样。加色系统里，给定一组基色光源（比如 R、G、B），调节它们的亮度并叠加，就可以匹配许多颜色。
+因此颜色可以表示为三个标量：它们分别对应三种 primary light 的强度。一句话说：显示器靠三种光叠加来“拼出”颜色。色彩匹配实验，如果是负数值，那么应该在另一边加<br>
+<img alt="Pasted image 20260406142954.png" src="9966-files-library/pasted-image-20260406142954.png" target="_self" style="width: 379px; max-width: 100%;"><br><img alt="Pasted image 20260406142919.png" src="9966-files-library/pasted-image-20260406142919.png" target="_self" style="width: 372px; max-width: 100%;">
+CIE 做过标准色彩匹配实验，得到一组 color matching functions：它们表示：要匹配某个单色光，需要多少标准 R、G、B 基色。于是对于任意光谱 ，其 CIE RGB 三刺激值可以写成：注意：这些 matching functions 不是光谱本身，也不是 cone response curve。色彩空间是一种特定的颜色组织方式。
+色彩空间”是一种有用的概念工具，用于理解特定设备或数字文件的色彩能力。在尝试在另一台设备上重现颜色时，色彩空间可以显示阴影/高光细节和色彩饱和度是否能被保留，以及这些内容会被破坏多少。sRGB 是最常见的标准 RGB 色彩空间之一。
+它本质上规定了一套标准显示器的 RGB 定义，其他设备通过校准去模拟它。
+它应用很广，但色域有限。<br><img alt="Pasted image 20260406143114.png" src="9966-files-library/pasted-image-20260406143114.png" target="_self" style="width: 363px; max-width: 100%;">
+CIE XYZ 是一个更通用的颜色空间。
+它使用一组“虚构的”标准原色 ，这种设计使得匹配函数都是正数。
+其中：
+Y 表示 luminance（亮度）
+X,Z 主要参与颜色描述 因此我们可以去掉表示明度的Y轴得到二维的色彩分布图<br><img alt="Pasted image 20260406143312.png" src="9966-files-library/pasted-image-20260406143312.png" target="_self" style="width: 445px; max-width: 100%;">在 XYZ 空间里，亮度和色度是分开的：
+Luminance：
+Chromaticity：
+定义为归一化后的比例，并满足：所以通常只需记录其中两个值，也就是常见的 色度坐标。
+CIE 色度图中：
+边界曲线叫 spectral locus
+边界对应纯单色光
+内部颜色更不纯，是混合色
+不同色彩空间覆盖的区域不同，这个覆盖范围就叫 gamut（色域）。
+色度说“是什么颜色”，亮度说“有多亮”；色域说“能表示哪些颜色”。<br><img alt="Pasted image 20260406144035.png" src="9966-files-library/pasted-image-20260406144035.png" target="_self" style="width: 575px; max-width: 100%;">HSV（Hue-Saturation-Value） 是一种更贴近直觉和美术操作的色彩空间。
+它的三个量分别是：
+Hue：色相，表示颜色种类
+Saturation：饱和度，表示颜色纯度
+Value：明度 / 亮度 它常用于 color picker。 HSV 更像“人怎么挑颜色”。若已知颜色的 RGB 值，并设：则 HSV 可写为：1. Value2. Saturation3. Hue
+当 时，颜色为灰度，Hue 通常记为 或未定义。
+当 时：若计算结果 ，再令：<br><img alt="Pasted image 20260406144131.png" src="9966-files-library/pasted-image-20260406144131.png" target="_self" style="width: 293px; max-width: 100%;">
+CIELAB（L*a*b*） 是一种尽量追求感知均匀的颜色空间.更接近“人实际怎么感觉颜色差异"。它包含：
+L*：lightness
+a*：红—绿对立轴
+b*：蓝—黄对立轴 它和 opponent color theory（对立色理论） 有很强联系。
+人的视觉系统似乎会沿三条轴编码颜色：
+白 — 黑
+红 — 绿
+黄 — 蓝 ”。<br><img alt="Pasted image 20260406144309.png" src="9966-files-library/pasted-image-20260406144309.png" target="_self" style="width: 344px; max-width: 100%;">CMYK 是一种减色系统，常用于印刷。
+它包含：
+C：Cyan
+M：Magenta
+Y：Yellow
+K：Key（黑）
+减色模型的特点是：
+混得越多，越暗。它和 RGB 的逻辑相反：
+RGB：加光
+CMYK：减光
+一句话说：屏幕靠发光混色，印刷靠吸光混色。]]></description><link>1221-个人学习/games101/6-photography-and-chromatology.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/6-Photography and Chromatology.md</guid><pubDate>Mon, 06 Apr 2026 06:46:07 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[5-Light Transport 2]]></title><description><![CDATA[辐射度量学（Radiometry）用于定量描述光的传播与测量，是路径追踪和渲染方程的物理基础。辐射能量表示电磁辐射携带的能量，记作 ，单位为 。
+辐射通量表示单位时间内传递的能量，也就是功率，记作 ：单位为 。<img alt="Pasted image 20260401221805.png" src="9966-files-library/pasted-image-20260401221805.png" target="_self" style="width: 212px; max-width: 100%;">
+辐射强度表示点光源在单位立体角内发出的功率，记作 ：单位为 。这里的 表示方向， 表示微分立体角。<br><img alt="Pasted image 20260401221832.png" src="9966-files-library/pasted-image-20260401221832.png" target="_self" style="width: 451px; max-width: 100%;">
+二维里角度可理解为弧长与半径之比：三维里立体角可理解为球面面积与半径平方之比：整个单位球面的立体角总量为：微分形式为：Irradiance辐照度表示单位面积上接收到的光通量，记作 ：单位为 。它描述的是“落到表面上的光有多强”。<br>
+<img alt="Pasted image 20260401222135.png" src="9966-files-library/pasted-image-20260401222135.png" target="_self" style="width: 517px; max-width: 100%;">
+Lambert 余弦定律说明：当光线以夹角 入射到表面时，单位面积接收到的能量会乘上一个余弦因子：若光源各向均匀发射，则辐照度还满足平方反比衰减：<br><img alt="Pasted image 20260401222215.png" src="9966-files-library/pasted-image-20260401222215.png" target="_self">
+Radiance是最核心的量，表示某点沿某个方向传播的单位立体角、单位投影面积上的功率，记作 ：(在点p处，沿方向ω)单位为 。它描述的是“沿着某条光线传播的光强”。 Incident radiance is the irradiance per unit solid angle arriving at the surface.
+Exiting surface radiance is the intensity per unit projected area leaving the surface.
+<br><img alt="Pasted image 20260401222949.png" src="9966-files-library/pasted-image-20260401222949.png" target="_self" style="width: 512px; max-width: 100%;">从方向 入射到表面点 的微分辐照度Irradiance为：所以总辐照度Irradiance就是对半球上所有入射方向积分：这个式子很重要，因为后面的 BRDF 和渲染方程都建立在它之上。<br><img alt="Pasted image 20260401223604.png" src="9966-files-library/pasted-image-20260401223604.png" target="_self" style="width: 553px; max-width: 100%;">BRDF 用来描述：从某个入射方向来的光，到底会有多少被反射到某个出射方向。<br>
+<img alt="Pasted image 20260401223712.png" src="9966-files-library/pasted-image-20260401223712.png" target="_self" style="width: 407px; max-width: 100%;">
+记入射方向为 ，出射方向为 ，则 BRDF 定义为：结合 ，可写成：单位为 。它的含义很直观：
+某个方向打进来的光，经过材质作用后，会按什么比例、什么方式分配到别的方向。出射光=∑(入射光×材质×角度修正)<br>
+<img alt="Pasted image 20260401224443.png" src="9966-files-library/pasted-image-20260401224443.png" target="_self" style="width: 547px; max-width: 100%;">对于表面点 ，沿出射方向 的反射辐亮度Radiance为：这个式子表示：
+半球上每个入射方向都会贡献一点光
+每份贡献由三部分共同决定： 入射光强 材质反射函数 入射角余弦项 <br><img alt="Pasted image 20260401231113.png" src="9966-files-library/pasted-image-20260401231113.png" target="_self" style="width: 571px; max-width: 100%;">反射方程只讨论“反射出去的光”，还没有考虑物体自己发光。
+加入自发光项 后，就得到更一般的渲染方程：考虑到物体表面也反射光，引入间接光照（indirect lighting），有：其中：
+：点 沿方向 离开的辐亮度
+：点 自身发出的辐亮度
+：从方向 入射到点 的辐亮度
+：点 朝着点 方向发射出来的光强
+：BRDF
+：入射角余弦项
+：法线所在的上半球
+困难在于 本身往往又来自场景中其他点的出射光。
+也就是说，一个点的光依赖别的点，别的点又依赖别的点，形成递归耦合。所以渲染方程本质上是一个积分方程。 进一步可展开为：<br>
+<img alt="Pasted image 20260401231130.png" src="9966-files-library/pasted-image-20260401231130.png" target="_self" style="width: 519px; max-width: 100%;">
+这表示：
+：光源直接发光
+：一次反射后的光
+：两次反射后的光
+：三次反射后的光
+…
+也就是整个全局光照过程。用随机采样的平均值去逼近积分。<br><img alt="Pasted image 20260401231642.png" src="9966-files-library/pasted-image-20260401231642.png" target="_self" style="width: 481px; max-width: 100%;">
+对于积分：若从概率密度函数PDF 中随机采样 ，则 Monte Carlo 估计为：其中： 是样本数 <br><img alt="Pasted image 20260401231658.png" src="9966-files-library/pasted-image-20260401231658.png" target="_self" style="width: 487px; max-width: 100%;">
+如果在区间 上均匀采样，则：于是有：积分结果：Radiance，某点 方向 上的光。
+积分对象：采样得到的 一组 入射方向若指定当前点和出射方向，从半球上按 采样若干个方向 ，就有：最基本的路径追踪思想
+对于表面点 和观察方向 ：
+随机采样一个入射方向 发出一条从 出发的光线
+如果打到光源，就得到直接贡献
+如果打到别的物体，就递归计算那个点的出射辐亮度
+乘上当前点的 BRDF、余弦项、pdf 校正
+//分布式光线追踪
+shade(p,wo) Randomly choose N directions wi~pdf //sample,N=1 is Path Tracing Lo = 0.0 For each wi Trace a ray r(p,wi) If ray r hit the light Lo += (1/N)*L_i*f_r(p,wi,wo)*(n*wi) / pdf(wi) //direct illumination Else If ray r hit an object at q Lo += (1/N)*shade(q,-wi)*f_r(p,wi,wo)*(n*wi) / pdf(wi) Return Lo
+这个算法存在（1）爆炸和（2）递归难以停止的问题！！！-&gt;When Number of Sample = 1 -&gt;Path Tracing<br>
+<img alt="Pasted image 20260404193842.png" src="9966-files-library/pasted-image-20260404193842.png" target="_self">
+如果每次反弹都采样很多条光线，光线数会指数爆炸。
+所以路径追踪通常在每个着色点只采样 一条 新方向。
+这样得到的是单条随机路径的贡献。 但此时会出现噪声很大的情况！因此选择一个像素发内部随机采样多个位置，每个位置发一条相机光线，多路径平均逼近样本数越多，噪声越小，但耗时也越高。-&gt; Stop infinite recursion -&gt; Russian Roulette (probability Stop)
+如果无限递归，算法不会停。
+但如果强行设最大反弹次数，又会丢失能量。
+以概率 继续追踪
+以概率 终止路径
+为了保持无偏估计，继续时要除以 ：
+这样期望值不变，因为：解决了这两个问题，我们得到了一个对于一个点，算光照的理想算法。
+Path Tracing
+# to avoid multiple rays boom(N^bounces), let N=1
+# to solve noisy effection when N=1, for each pixel, shoots multiple paths ray_generation(camPos, pixel) Uniformly choose N sample positions within the pixel pixel_radiance = 0.0 For each sample in the pixel Shoot a ray r(camPos, cam_to_sample) If ray r hit the scene at p pixel_radiance += 1 / N * shade(p, sample_to_cam) Return pixel_radiance # to solve the endless recursive algorithm, using probality *p* to stop
+# so the E(bounces)=p/1-p
+# let L_o divided by p, so the E(L_o) will be fixed to L_o shade(p, wo) Manually specify a probability P_RR Randomly select ksi in a uniform dist. in [0, 1] If (ksi &gt; P_RR) return 0.0; Randomly choose ONE direction wi~pdf(w) Trace a ray r(p, wi) If ray r hit the light Return L_i * f_r * cosine / pdf(wi) / P_RR Else If ray r hit an object at q Return shade(q, -wi) * f_r * cosine / pdf(wi) / P_RR <br><img alt="Pasted image 20260404200354.png" src="9966-files-library/pasted-image-20260404200354.png" target="_self">
+考虑到光照打到的难度不同。
+为了提升效率，通常把光照分成两部分：① 直接光照<br>
+<img alt="Pasted image 20260404200454.png" src="9966-files-library/pasted-image-20260404200454.png" target="_self" style="width: 339px; max-width: 100%;">
+不再等着“随机方向恰好打中光源”，
+而是直接在光源表面上采样一点 ，再检测它是否可见。若光源采样 pdf 为 ，则直接光照贡献为：前提是从 到 的连线没有被遮挡。
+② 间接光照再从半球上采样一个方向 ，若打到非发光物体 ，递归得到：因此路径追踪在一个点上的结果通常写成：其中：
+：通过对光源采样得到的直接光照
+：通过递归采样得到的间接光照 # to solve the problem that high miss of little light area, transform the caculation to light by using dA, L_o = light_contribution + object_diffuse_reflection shade(p, wo) # Contribution from the light source. Uniformly sample the light at x’ (pdf_light = 1 / A) Shoot a ray from p to x’ If the ray is not blocked in the middle L_dir = L_i * f_r * cos θ * cos θ’ / |x’ - p|^2 / pdf_light # Contribution from other reflectors. L_indir = 0.0 Test Russian Roulette with probability P_RR ( Manually specify a probability P_RR Randomly select ksi in a uniform dist. in [0, 1] If (ksi &gt; P_RR) return 0.0; ) Uniformly sample the hemisphere toward wi (pdf_hemi = 1 / 2pi) Trace a ray r(p, wi) If ray r hit a non-emitting object at q L_indir = shade(q, -wi) * f_r * cos θ / pdf_hemi / P_RR Return L_dir + L_indir <br>关于GAMES101作业中的path tracing具体实现，参见<a data-href="GAMES101参考资料" href="1221-个人学习/games101/games101参考资料.html" class="internal-link" target="_self" rel="noopener nofollow">GAMES101参考资料</a>优点：
+与渲染方程一致
+能自然处理全局光照
+结果可以非常接近真实照片
+缺点：
+SSP小会导致噪声大
+收敛慢
+对采样策略要求高
+所以路径追踪的关键矛盾就是：正确，但贵。]]></description><link>1221-个人学习/games101/5-light-transport-2.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/5-Light Transport 2.md</guid><pubDate>Sun, 05 Apr 2026 15:31:46 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[5-Light Transport 1]]></title><description><![CDATA[一种基于图像空间（image-space）的阴影算法。它在计算阴影时不直接处理场景几何，而是利用“从光源看过去的深度图”判断某点是否被遮挡。核心思想是：一个点若不在阴影中，它必须同时能被相机看见，也能被光源看见。先以光源为“相机”渲染场景，只记录深度，得到一张 shadow map。这张图保存了从光源出发，每个方向上最先看到的表面深度。
+<img alt="Pasted image 20260330195016.png" src="9966-files-library/pasted-image-20260330195016.png" target="_self" style="width: 245px; max-width: 100%;">再从眼睛视角渲染场景，得到当前屏幕上可见的点。<br>
+<img alt="Pasted image 20260330195032.png" src="9966-files-library/pasted-image-20260330195032.png" target="_self" style="width: 261px; max-width: 100%;">对于相机看到的每个着色点，把它重新投影到光源坐标系中，得到它在 shadow map 上的位置，并比较：
+若该点到光源的深度 与 shadow map 记录的深度一致，说明它就是光源看到的最前面的点，可见，不在阴影中<br>
+<img alt="Pasted image 20260330195057.png" src="9966-files-library/pasted-image-20260330195057.png" target="_self" style="width: 282px; max-width: 100%;">
+若该点深度 更大，说明它前面还有别的物体挡住了光，在阴影中<br>
+<img alt="Pasted image 20260330195134.png" src="9966-files-library/pasted-image-20260330195134.png" target="_self" style="width: 311px; max-width: 100%;">
+shadow map 本质上是在问：
+“从光源方向看，这里最先撞到的是不是你这个点？”
+是你：说明没被挡住
+不是你：说明前面有遮挡物，你就在阴影里。<br>
+<img alt="Pasted image 20260330195258.png" src="9966-files-library/pasted-image-20260330195258.png" target="_self" style="width: 233px; max-width: 100%;">
+优点
+思路直接，适合和光栅化管线结合
+是很经典、很常用的实时阴影方法，早期动画和几乎所有 3D 游戏都大量使用。
+问题
+只能天然得到 硬阴影
+效果强烈依赖 shadow map 分辨率，容易出现锯齿、走样
+深度比较是浮点数比较，容易出现 shadow acne / bias / tolerance 一类问题。
+<br><img alt="Pasted image 20260331215000.png" src="9966-files-library/pasted-image-20260331215000.png" target="_self" style="width: 434px; max-width: 100%;">
+Whitted-Style Ray Tracing 是经典递归光线追踪模型。它的目标是比光栅化更自然地处理：
+阴影
+镜面反射
+折射
+一部分全局光照效果。
+相比 rasterization，它更擅长处理“光会继续传播和反弹”的现象，但代价是计算很慢。Whitted 风格的基础想法可以概括成几条： 光沿直线传播
+在几何光学近似下，把光视为沿直线前进。这样就可以用一条 ray 去描述光的路径。 光线可逆
+真实物理上常说光从光源到眼睛，但由于 路径可逆（reciprocity），在渲染里我们通常从相机往场景发射光线，这样更高效，因为只有最后进入眼睛的光才和成像有关。 光线之间互不影响
+在基础模型中默认不同光线彼此独立，不考虑它们互相碰撞之类的复杂波动效应。 基本 Ray Casting(光线投射) 思想
+最初的 ray casting 只做两件事： 每个像素发一条主光线
+从交点向光源发阴影光线判断是否被遮挡。
+Whitted 在此基础上继续加入反射光线和折射光线，于是形成光线追踪的递归结构。
+在计算之后返回RGB三元组，进一步交给渲染<br>相关函数算法可以参考<a data-href="GAMES101参考资料" href="1221-个人学习/games101/games101参考资料.html" class="internal-link" target="_self" rel="noopener nofollow">GAMES101参考资料</a>从眼睛穿过像素发出一条光线，找到它与场景中最近的交点。<br>
+<img alt="Pasted image 20260330195902.png" src="9966-files-library/pasted-image-20260330195902.png" target="_self" style="width: 366px; max-width: 100%;">先计算直接光照，比如漫反射、高光等局部项。如果材质具有镜面反射或折射性质，就继续生成：<br>
+<img alt="Pasted image 20260330195915.png" src="9966-files-library/pasted-image-20260330195915.png" target="_self" style="width: 484px; max-width: 100%;"><br>
+<img alt="Pasted image 20260330200031.png" src="9966-files-library/pasted-image-20260330200031.png" target="_self" style="width: 523px; max-width: 100%;">
+反射光线：沿镜面反射方向继续追踪
+折射光线：沿透射方向继续追踪
+阴影光线：朝向光源，检测遮挡。
+<br><img alt="Pasted image 20260330200047.png" src="9966-files-library/pasted-image-20260330200047.png" target="_self" style="width: 563px; max-width: 100%;">
+次级光线再与物体相交，又会生成新的次级光线，于是形成递归树。最终像素颜色由：
+本点直接着色
+反射返回的颜色
+折射返回的颜色
+阴影可见性
+共同决定。
+<br><img alt="Pasted image 20260331221634.png" src="9966-files-library/pasted-image-20260331221634.png" target="_self" style="width: 200px; max-width: 100%;">
+在寻找最近的交点的过程中，我们需要判断当前光线是否与当前查询的平面（三角形）相交。对于一条光线：
+其中：
+：光线起点
+：光线方向
+：参数，表示沿光线前进距离
+设三角形三个顶点为：定义边向量： ，三角形内部任意点可以表示为重心坐标形式：因此光线与三角形相交等价于求解：整理得：记：得到线性方程组：未知量为：，可以使用克拉默法则求解。定义： 若 ，说明光线与三角形平面平行，不相交。计算：若：说明光线与三角形存在有效交点Whitted 风格特别适合：
+理想镜面反射
+理想折射
+清晰阴影
+直接光照下的高光。
+它并不是真正完整的全局光照解。后面课程专门指出它的问题：
+对 glossy reflection 不自然，因为不是单一反射方向
+对 diffuse-diffuse 之间的间接反弹处理不好
+所以它是经典模型，但并不等价于完整的 rendering equation 解。
+光线追踪最贵的地方之一，是 求光线和场景几何的交点。如果每条 ray 都去和场景里每个三角形测试一次，复杂度大致就是：像素数 × 物体数 × 反弹次数场景一大就会非常慢。课程里直接指出，朴素做法需要对每条 ray 穷举测试所有三角形。所以必须做加速结构。<br><img alt="Pasted image 20260331221705.png" src="9966-files-library/pasted-image-20260331221705.png" target="_self" style="width: 563px; max-width: 100%;">基本想法：
+先用一个简单体积把复杂物体包起来，先测 ray 是否打到这个包围体。
+若连包围体都没打中，那肯定不可能打中里面的真实物体
+若打中了包围体，再去测真实几何。
+最常见的是 AABB（Axis-Aligned Bounding Box，轴对齐包围盒），也就是盒子的边和 x/y/z 轴平行。这样求交会更简单。<br>
+<img alt="Pasted image 20260331221744.png" src="9966-files-library/pasted-image-20260331221744.png" target="_self" style="width: 214px; max-width: 100%;">
+Ray-AABB 相交思想
+<br><img alt="Pasted image 20260331221819.png" src="9966-files-library/pasted-image-20260331221819.png" target="_self" style="width: 618px; max-width: 100%;">一个盒子可以看成 3 对 slab（平行平面夹出的区间）的交。 对每个轴分别算 ray 进入和离开该 slab 的参数区间：
+得到每个轴上的 tmin 和 tmax
+总进入时刻 t_enter = max(各轴 tmin)
+总离开时刻 t_exit = min(各轴 tmax)
+若：
+t_enter &lt; t_exit
+且 t_exit &gt;= 0
+-&gt;则 ray 与 AABB 相交。
+AABB 的好处就是：
+和一般平面求交相比，轴对齐后每个 slab 只需要很少的减法和除法，代价小很多。Uniform Grid 就是把整个场景包围盒切成很多规则小格子。预处理时：
+找场景 bounding box
+建立网格 create grid
+把每个物体登记到所有它覆盖的格子Store each object in overlapping cells<br>
+<img alt="Pasted image 20260331222842.png" src="9966-files-library/pasted-image-20260331222842.png" target="_self" style="width: 369px; max-width: 100%;">
+追踪 ray 时，按 ray 穿过网格的顺序逐格前进：<br>
+<img alt="Pasted image 20260331222930.png" src="9966-files-library/pasted-image-20260331222930.png" target="_self" style="width: 244px; max-width: 100%;"> 每到一个格子，只测试这个格子里登记的物体
+而不是测试整个场景。
+对于Grid Resolution, 网格不是越细越好。<br>
+<img alt="Pasted image 20260331223425.png" src="9966-files-library/pasted-image-20260331223425.png" target="_self" style="width: 143px; max-width: 100%;"><img alt="Pasted image 20260331223350.png" src="9966-files-library/pasted-image-20260331223350.png" target="_self" style="width: 146px; max-width: 100%;">
+太粗：比如只有一个格子(One Cell)，等于完全没加速
+太细：Too many Cells 会花很多时间在穿格子上，额外遍历开销很大。
+GAMES101课程里给了一个经验启发：
+3D 中可令 cell 数 ≈ 27 × object 数 作为启发式。总的来讲Uniform Grid适合：
+物体很多
+大小比较接近
+空间分布比较均匀。
+典型失败例子是 “teapot in a stadium”：
+一个很小的精细物体
+放在一个特别大的空场景里
+这时统一网格很难同时兼顾大尺度空区域和小尺度细节。
+<br><img alt="Pasted image 20260331223643.png" src="9966-files-library/pasted-image-20260331223643.png" target="_self" style="width: 609px; max-width: 100%;">Oct-Tree 是一种递归空间划分：
+每次把一个 3D 空间盒子继续切成 8 个子盒子。
+特点：
+比 uniform grid 更自适应
+稀疏区域不会被切得过密
+适合层次化管理空间。
+<br><img alt="Pasted image 20260331223835.png" src="9966-files-library/pasted-image-20260331223835.png" target="_self" style="width: 449px; max-width: 100%;">
+KD-Tree 也是空间划分结构，但每次不是切成 8 份，而是用一个与坐标轴平行的平面，把空间二分。内部节点存：
+划分轴（x / y / z）
+划分位置
+左右子节点指针
+叶节点存：
+该区域内的物体注册列表。 看光线先进入哪个子空间，先遍历近处子节点
+若近处子节点找到交点，再用 t_hit 判断是否还需要去远处子节点。<br>
+<img alt="Pasted image 20260331224001.png" src="9966-files-library/pasted-image-20260331224001.png" target="_self" style="width: 365px; max-width: 100%;"> 从根节点开始，先判断光线是否进入整个包围盒
+到达一个节点时，先区分它是不是叶节点
+对内部节点，先求光线与分割平面的交点参数
+根据光线方向和起点位置，确定 near child 和 far child
+根据 与当前区间 的关系决定递归方式
+若 ，说明在当前有效区间内，光线已经位于 far child 一侧，所以只需递归 far child。
+若 ，说明在当前有效区间内，光线始终位于 near child 一侧，所以只需递归 near child。
+若 ，说明光线会先经过 near child，再穿过分割面进入 far child，此时：
+先递归 near child，对应区间为 ；
+若 near child 没找到交点，再递归 far child，对应区间为 KD-Tree 的本质是：
+划分的是空间本身，所以一个物体可能跨越多个区域，被存进多个地方。BSP-Tree（Binary Space Partitioning）和 KD-Tree 很像，也是在递归地用平面切空间。区别在于：
+KD-Tree 通常限制切分平面与坐标轴对齐
+BSP-Tree 的切分平面可以更一般、更自由
+BVH 是另一种思路，不再直接切空间，而是划分物体集合。也就是说：
+把场景中的物体递归分成两个子集
+给每个子集包一个 bounding box
+继续对子集递归。:contentReference[oaicite:40]{index=40}<br>
+<img alt="Pasted image 20260331231224.png" src="9966-files-library/pasted-image-20260331231224.png" target="_self" style="width: 497px; max-width: 100%;"><br>
+<img alt="Pasted image 20260331231255.png" src="9966-files-library/pasted-image-20260331231255.png" target="_self" style="width: 510px; max-width: 100%;"><br>
+<img alt="Pasted image 20260331231318.png" src="9966-files-library/pasted-image-20260331231318.png" target="_self" style="width: 551px; max-width: 100%;"> 求当前物体集合的 bounding box
+把物体集合递归分成两个子集
+划分思路：
+Heuristic #1: Always choose the longest axis in node
+Heuristic #2: Split node at location of median object
+重新计算两个子集的 bounding box
+满足终止条件后停止
+在叶节点保存物体列表。
+内部节点Internal nodes存：
+bounding box
+两个子节点指针
+叶节点存：
+bounding box
+List of objects
+<br><img alt="Pasted image 20260331231549.png" src="9966-files-library/pasted-image-20260331231549.png" target="_self">
+遍历时：
+先测 ray 是否打中当前节点 bbox
+若没打中，整棵子树直接跳过
+若是叶节点，就测试叶子中的物体
+若是内部节点，就递归遍历两个子节点
+返回最近交点。
+<br>GAMES101作业的BVH相关代码参见：<a data-href="GAMES101参考资料" href="1221-个人学习/games101/games101参考资料.html" class="internal-link" target="_self" rel="noopener nofollow">GAMES101参考资料</a>]]></description><link>1221-个人学习/games101/5-light-transport-1.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/5-Light Transport 1.md</guid><pubDate>Sun, 05 Apr 2026 15:29:48 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[3-Shading]]></title><description><![CDATA[Shading = 在某个表面点计算朝向相机的反射光强度，计算片元的颜色输入：
+view direction：v
+light direction：l //or point
+surface normal：n
+material parameters： kd
+ks
+ka
+shininess p 输出：
+pixel color
+特点：
+局部计算（local illumination）
+不考虑遮挡关系
+不产生阴影（shadow ≠ shading）
+公式：解决问题： 哪个 fragment 可见？核心思想：每个像素记录当前最近深度维护两个 buffer：
+framebuffer：颜色
+z-buffer：深度
+初始化：更新规则：for each triangle for each sample(x,y,z) if z &lt; zbuffer[x,y] framebuffer[x,y] = color zbuffer[x,y] = z
+特点：
+时间复杂度 O(n)
+GPU 硬件实现
+independent of drawing order
+<img alt="Pasted image 20260325233036.png" src="9966-files-library/pasted-image-20260325233036.png" target="_self" style="width: 553px; max-width: 100%;">
+目标：从 vertex attributes 推出 pixel attributes若点 P 在三角形内部，，对于属性，有：插值公式：可用于：
+color interpolation
+normal interpolation
+uv interpolation
+depth interpolation
+<br><img alt="Pasted image 20260325232539.png" src="9966-files-library/pasted-image-20260325232539.png" target="_self" style="width: 593px; max-width: 100%;">在图形学管线中，顶点先经过： Model -&gt; View -&gt; Projection 原始顶点写成齐次坐标： 经过 projection matrix 后得到裁剪空间坐标： 其中这个 就是后面做透视修正时要用的 ( w ) 随后会进行透视除法（perspective divide）： 也就是说： 屏幕坐标是“除以 ( w )”之后得到的 , 所以屏幕空间中的 barycentric weight，并不能直接正确对应三维空间中的属性变化。 texture coordinate normal color view-space position 这些量，都是在投影之前定义的。 透视投影之后，它们在屏幕空间不再保持线性。
+否则会出现： 纹理拉伸 高光位置错误 插值结果透视失真 思路： 插值 attribute / w 再除以 1 / w
+公式为： <br><img alt="Pasted image 20260327152620.png" src="9966-files-library/pasted-image-20260327152620.png" target="_self">环境光：特点：
+constant
+independent of geometry
+用来避免纯黑阴影
+<br><img alt="Pasted image 20260325232743.png" src="9966-files-library/pasted-image-20260325232743.png" target="_self">Lambert cosine law:性质：
+与观察方向无关
+只依赖入射角
+<br><img alt="Pasted image 20260325232824.png" src="9966-files-library/pasted-image-20260325232824.png" target="_self" style="width: 242px; max-width: 100%;">
+定义半程向量：镜面反射（看视点方向和半程向量接近程度）：参数：
+ks：高光强度
+p：高光集中程度
+p 越大高光越尖锐<br><img alt="Pasted image 20260325232459.png" src="9966-files-library/pasted-image-20260325232459.png" target="_self" style="width: 598px; max-width: 100%;">每个 triangle 计算一次光照使用：face normal特点：
+fast
+不平滑
+边界明显
+适合：low-poly 风格流程：1 在 vertex 计算光照
+2 插值颜色
+3 得到 pixel color公式：优点：速度快
+缺点：高光可能消失vertex normal ：流程：1 插值 normal
+2 每个 pixel 计算光照即：再计算：注意Phong shading ≠ Blinn-Phong model，一个是插值策略，一个是反射模型作用：让表面不同位置具有不同属性例如：
+颜色
+法线
+高度
+roughness
+2D属性与3D空间建立映射关系：每个 vertex 绑定：然后通过 barycentric interpolation 得到：pixel 的 uv再查表：texture.sample(u,v)
+得到material color，后再算光照问题描述：纹理分辨率太低，放大会出现blocky artifact解决方案：bilinear interpolation
+图中黑点为(u,v),红色为屏幕像素中心<br>
+<img alt="Pasted image 20260325233623.png" src="9966-files-library/pasted-image-20260325233623.png" target="_self">
+假设四个 texel：定义：计算：最终：其他方法：Bicubic<br><img alt="Pasted image 20260325234815.png" src="9966-files-library/pasted-image-20260325234815.png" target="_self" style="width: 682px; max-width: 100%;">
+问题描述：纹理远距离显示时，多个 texel 落入一个 pixel，产生摩尔纹等严重走样问题。
+point sampling 是点查询，实际需要区域平均
+解决方案：Mipmap<br>
+<img alt="Pasted image 20260325234912.png" src="9966-files-library/pasted-image-20260325234912.png" target="_self" style="width: 516px; max-width: 100%;">
+思想：预计算纹理金字塔：<br>
+<img alt="Pasted image 20260325234927.png" src="9966-files-library/pasted-image-20260325234927.png" target="_self" style="width: 329px; max-width: 100%;">level0 128×128
+level1 64×64
+level2 32×32
+...
+leveln 1×1
+查询步骤：<br>
+<img alt="Pasted image 20260325234953.png" src="9966-files-library/pasted-image-20260325234953.png" target="_self">
+计算 footprint：得到：
+L是一个量度。如果L是1，说明一个texel对应一个pixel，D=0的情况，如果L是2，那么就是D=1的情况，一个pixel对应2*2的texel。
+选择：对应 mipmap level进一步优化：Trilinear interpolation方法：在两个 mipmap level 之间插值：level D
+level D+1
+<br><img alt="Pasted image 20260326000752.png" src="9966-files-library/pasted-image-20260326000752.png" target="_self" style="width: 577px; max-width: 100%;"><br><img alt="Pasted image 20260325235023.png" src="9966-files-library/pasted-image-20260325235023.png" target="_self">法线贴图用于在 不改变几何结构 的前提下改变每个像素的 normal，从而改变光照结果。核心思想：纹理直接存储 normal 信息，fragment shader 读取该 normal 并替换原始几何法线参与光照计算，因此可以表现砖墙、织物、划痕等细节结构，同时 position、triangle、轮廓与真实遮挡关系保持不变，仅改变 shading。<br><img alt="Pasted image 20260327144639.png" src="9966-files-library/pasted-image-20260327144639.png" target="_self">Bump mapping 通过 height map 的局部梯度扰动原始 normal 来模拟表面凹凸细节，其中 height map 记作 ，通过计算 与 得到局部倾斜方向，再构造扰动 normal 并参与光照计算，因此视觉上产生细节起伏但几何结构不发生变化。<br><img alt="Pasted image 20260327144924.png" src="9966-files-library/pasted-image-20260327144924.png" target="_self">
+这是一个二维的情况，只要我们知道了定义好的h(u)上的变化程度，我们就可以根据h(u+1)-h(u)乘一个常数c得到dp，我们就有了斜边方向向量(1,dp)，法线就是在这个局部坐标系上的垂直的向量n，也就是(-dp,1)。
+扩展到三维的情况，如下：
+Original surface normal n(p) = (0, 0, 1)
+Derivatives at p are dp/du = c1 * [h(u+1) - h(u)]
+dp/dv = c2 * [h(v+1) - h(v)] Perturbed normal is n = (-dp/du, -dp/dv, 1).normalized()
+此时我们只解决了局部坐标系的问题，因此我们引入矩阵TBN
+TBN矩阵的作用是：建立一个局部切线空间（tangent space）坐标系，把纹理空间里的法线（例如 normal map 或 bump 推出来的法线）转换到 world space 或 view space 参与光照计算。它由三个互相正交的向量组成：
+T = tangent（沿 u 方向） B = bitangent（沿 v 方向） N = normal（原始几何法线）
+<br>严格推导见<a data-href="GAMES101参考资料" href="1221-个人学习/games101/games101参考资料.html" class="internal-link" target="_self" rel="noopener nofollow">GAMES101参考资料</a> 。在GAMES101的HW3中，采用如下近似：
+已知原始法线：构造切线向量：再计算副切线向量：最终得到：用于法线变换：input: normal n texcoord (u, v) height map h(u, v) step1: sample height difference dU = h(u+du, v) - h(u, v) dV = h(u, v+dv) - h(u, v) step2: build local tangent space matrix TBN = [T B N] step3: compute perturbed normal in tangent space ln = (-dU, -dV, 1) step4: transform to world space n' = normalize(TBN * ln) step5: use new normal for lighting result_color = lighting(n') 最终效果是改变像素级光照分布来模拟表面细节起伏，但不会改变模型轮廓，也不会产生真实几何位移；若需要真实位移效果，应使用 displacement mapping。<br><img alt="Pasted image 20260327154353.png" src="9966-files-library/pasted-image-20260327154353.png" target="_self" style="width: 536px; max-width: 100%;">Displacement mapping 使用与 bump mapping 相同的 height map：但不同之处在于：bump mapping 只改变法线方向：
+displacement mapping 直接沿法线方向移动顶点位置：改变 position -&gt; 改变 normal -&gt; 改变物体轮廓 -&gt; 改变真实阴影首先沿法线方向移动顶点：float h = height(u, v); position = position + normal * h; float dU = height(u + du, v) - h;
+float dV = height(u, v + dv) - h; Vector3f ln(-dU, -dV, 1.0); normal = normalize(TBN * ln);
+Ambient Occlusion（环境光遮蔽贴图，简称 AO map） —— 一种把“阴影信息提前算好并存进纹理”的方法。<br>
+<img alt="Pasted image 20260327154704.png" src="9966-files-library/pasted-image-20260327154704.png" target="_self">3D Textures and Volume Rendering<br>
+<img alt="Pasted image 20260327154756.png" src="9966-files-library/pasted-image-20260327154756.png" target="_self" style="width: 577px; max-width: 100%;">]]></description><link>1221-个人学习/games101/3-shading.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/3-Shading.md</guid><pubDate>Sun, 05 Apr 2026 15:07:32 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[2-Rasterization]]></title><description><![CDATA[光栅化（Rasterization）指： 将连续几何图元（通常是三角形）转换为屏幕像素的过程
+屏幕本质是一个二维像素数组：Image = 2D array of pixels
+for each pixel's color：color = (R, G, B)
+Rasterization = sampling in 2D space<img alt="Pasted image 20260325140347.png" src="9966-files-library/pasted-image-20260325140347.png" target="_self" style="width: 371px; max-width: 100%;">Model → View → Projection（MVP） 得到clip space position 随后执行： perspective division 得到： NDC（Normalized Device Coordinates） x,y,z ∈ [-1,1] 接着执行： viewport transform 映射到屏幕空间： x ∈ [0,width] y ∈ [0,height] 得到： triangle 的屏幕空间坐标 Rasterization 的输入： screen-space triangle Rasterization 的目标： 确定哪些像素被覆盖，以及这些像素的属性值是多少 例如： color
+depth
+normal
+texture coordinate
+shading result因为三角形具有几个重要性质： 一定共面 内部区域定义明确
+inside-triangle test 可稳定计算 易于插值
+可使用 barycentric interpolation 插值：
+color normal depth texture coordinate目标： （采样方式： 判断像素中心是否在内部）
+triangel {P0, P1, P2}遍历像素 判断像素中心是否在三角形内部// acceleration method : bounding box
+for x in (xmin,xmax): for y (ymin,ymax): if inside(triangle, x+0.5, y+0.5): draw pixel
+<br><img alt="Pasted image 20260325141154.png" src="9966-files-library/pasted-image-20260325141154.png" target="_self" style="width: 455px; max-width: 100%;">using cross：triangle {P0, P1, P2}
+for each being checked point:(P1-P0) × (Q-P0) //.cross()
+(P2-P1) × (Q-P1)
+(P0-P2) × (Q-P2)if the same sign
+Q ∈ triangle
+else
+Q ∉ triangle
+<br>
+<img alt="Pasted image 20260325141850.png" src="9966-files-library/pasted-image-20260325141850.png" target="_self" style="width: 466px; max-width: 100%;">光栅化本质是采样：continuous signal → discrete pixels走样是因为存在频率变化极高的地方，产生了锯齿反走样就是减少这些频率变化剧烈的地方<br>
+<img alt="Pasted image 20260325142343.png" src="9966-files-library/pasted-image-20260325142343.png" target="_self" style="width: 513px; max-width: 100%;"><br>
+<img alt="Pasted image 20260325142600.png" src="9966-files-library/pasted-image-20260325142600.png" target="_self" style="width: 487px; max-width: 100%;">
+先滤波再采样
+filter → sample思想：
+pixel 本质不是一个点而是一个小区域，因此像素值应等于 triangle 在 pixel 内覆盖面积比例
+伪代码： for each triangle: compute bounding box for x in (xmin,xmax): for y in (ymin,ymax): covered_area = compute_triangle_pixel_intersection_area() pixel[x][y] = covered_area / pixel_area
+思想：使用多个子采样点近似面积积分，把一个 pixel 拆成 N×N subpixels，在每个 subpixel center 进行 inside test，再取平均值作为最终 pixel 值，即 pixel_value = inside_count / sample_count，本质是提高 sampling frequency 来逼近真实面积覆盖率，从信号角度理解就是提升采样率减少高频 aliasing
+例如对 pixel(x,y) 做 2×2 supersampling，可以在这个 pixel 内取 4 个 sample： (x+0.25,y+0.25)
+(x+0.75,y+0.25)
+(x+0.25,y+0.75)
+(x+0.75,y+0.75)for each triangle: compute bounding box for x in (xmin,xmax): for y in (ymin,ymax): inside_count = 0 for each sub_sample s in pixel(x,y): if inside(triangle,s): inside_count++ pixel[x][y] = inside_count / sample_count 特点：边缘平滑效果明显，可以很好近似 area sampling，但代价是 shading 与 depth test 计算次数增加为原来的 N² 倍，例如 4×SSAA 计算量变为 4 倍，16×SSAA 变为 16 倍，因此性能成本较高思想：SSAA 的优化版本，只对 geometry coverage 进行多次采样，而 shading 只计算一次，即 pixel 内多个 sample position 判断是否在 triangle 内得到 coverage mask，再根据覆盖比例混合颜色，从而减少 shading 次数降低计算成本，同时保持 edge smoothing 效果 伪代码： for each triangle: compute bounding box for each pixel: coverage = 0 for each sub_sample s: if inside(triangle,s): coverage++ pixel_color = shading_result * coverage / sample_count 特点：相比 SSAA 计算量显著下降，因为 shading 只执行一次，但仍能有效改善 triangle edge 的 jaggies，因此成为实时渲染中常用抗锯齿方法，不过仍然需要额外 sample storage 和 memory bandwidth]]></description><link>1221-个人学习/games101/2-rasterization.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/2-Rasterization.md</guid><pubDate>Sun, 05 Apr 2026 14:43:36 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item><item><title><![CDATA[1-Transform]]></title><description><![CDATA[<img alt="Pasted image 20260405223813.png" src="9966-files-library/pasted-image-20260405223813.png" target="_self" style="width: 567px; max-width: 100%;">MVP物体的坐标（Model Space）
+↓ Model Transformation
+世界的坐标（World Space）
+↓ (placing camera）View Transformation
+相机系的坐标（View Space）
+↓ Perspective &amp; OrthoGraphic Projection
+Clip Space
+↓ Pespective Division
+NDC Space [-1,1]^3
+↓ Viewport Transform
+Screen Space图形学核心任务：
+3D Object → 2D Screen 通过三类变换完成：
+Model → View → Projection 即：作用流程：
+模型空间 → 世界空间 → 相机空间 → 裁剪空间 → 屏幕空间 二维线性变换统一形式：
+Scale Rotation Reflection Shear <br><img alt="Pasted image 20260405223924.png" src="9966-files-library/pasted-image-20260405223924.png" target="_self" style="width: 524px; max-width: 100%;">等比例缩放：非等比例缩放：示例：
+(sx, sy) = (2,1) 表示：x方向拉伸 y方向保持不变
+<br><img alt="Pasted image 20260405223902.png" src="9966-files-library/pasted-image-20260405223902.png" target="_self" style="width: 497px; max-width: 100%;">绕原点逆时针旋转：示例：当：关于 y轴：关于 x轴：水平错切：对应：几何意义：
+顶部移动 底部不动 形成平行四边形 形式：包括：
+线性变换 + 平移 例如：但无法表示为：因此：
+平移不是线性变换 但属于仿射变换 作用：统一表示：
+线性变换 平移变换 投影变换 二维：点：向量：成立：
+vector + vector = vector point + vector = point point − point = vector 不成立：
+point + point 多个变换组合：作用顺序：
+先执行 M1 再执行 M2 最后执行 M3 注意：
+矩阵不可交换 绕：旋转：步骤：
+平移到原点 旋转 平移回去 矩阵表达：三维齐次坐标：点：向量：通用变换矩阵：统一表示：
+Scale Rotation Translation 任意旋转表示：常见应用：
+roll pitch yaw 例如：
+飞机姿态控制 游戏角色控制 目标：把相机统一转换到标准状态：
+位置：原点 朝向：-Z 上方向：Y 方法：
+移动整个世界 而不是移动相机 设：
+相机位置：e 观察方向：g 上方向：t 则：其中：平移矩阵：<br><img alt="Pasted image 20260405224040.png" src="9966-files-library/pasted-image-20260405224040.png" target="_self" style="width: 582px; max-width: 100%;"><br>
+<img alt="Pasted image 20260405224052.png" src="9966-files-library/pasted-image-20260405224052.png" target="_self" style="width: 622px; max-width: 100%;">
+目标：两类：
+Orthographic projection Perspective projection 目标：把视锥体：映射到：方法：
+Translate → Scale 缩放矩阵：平移矩阵：特点：
+远小近大 平行线汇聚 核心关系：解释：
+z越大 图像越小 产生透视效果齐次坐标性质：因此：实现：透视投影]]></description><link>1221-个人学习/games101/1-transform.html</link><guid isPermaLink="false">1221 个人学习/GAMES101/1-Transform.md</guid><pubDate>Sun, 05 Apr 2026 14:41:16 GMT</pubDate><enclosure url="." length="0" type="false"/><content:encoded>&lt;figure&gt;&lt;img src=&quot;.&quot;&gt;&lt;/figure&gt;</content:encoded></item></channel></rss>
