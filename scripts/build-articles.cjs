@@ -28,10 +28,10 @@ async function build() {
   const date = essay => `<time datetime="${escape(essay.date)}">${escape(essay.date.replaceAll('-', '.'))}</time>`;
   const categories = [...new Set(essays.flatMap(essay => essay.tags))].map(escape).join(' / ');
   const rows = essays.map(essay => `<li><a class="essay-list-link" href="${essay.slug}.html">${date(essay)}<h2>${escape(essay.title)}</h2><span class="essay-list-tags">${tags(essay)}</span><i data-lucide="arrow-up-right" aria-hidden="true"></i></a></li>`).join('\n');
-  write('index.html', '文章', '阿苏的音乐随笔、哲学随笔与个人随笔。思想的延伸与时间的注脚。', `
+  write('index.html', 'Essays', '阿苏的音乐随笔、哲学随笔与个人随笔。思想的延伸与时间的注脚。', `
     <section class="blog-hero">
       <a class="breadcrumb" href="../index.html#essays"><i data-lucide="arrow-left" aria-hidden="true"></i> 返回首页</a>
-      <p class="eyebrow">ARTICLES / ESSAYS</p><h1>文章</h1><p>思想的延伸与时间的注脚。</p>
+      <p class="eyebrow">ESSAYS / ASUBTTS</p><h1>Essays</h1><p>思想的延伸与时间的注脚。</p>
     </section>
     <div class="blog-index-head"><h2>${categories}</h2><span class="article-count">${essays.length} 篇文章</span></div>
     <ol class="essay-list">${rows}</ol>`);
