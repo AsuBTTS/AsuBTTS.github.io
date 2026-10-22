@@ -95,6 +95,43 @@ fs.mkdirSync(output, { recursive: true });
     await page.screenshot({ path: path.join(output, 'blog-mobile.png'), fullPage: true });
     assert.deepEqual(errors, []);
     console.log('Blog: 13 article links passed. No page JavaScript errors.');
+    const essays = JSON.parse(fs.readFileSync(path.resolve(__dirname, '../content/essays.json'), 'utf8'));
+    await page.goto(base + '/articles/index.html', { waitUntil: 'networkidle' });
+    assert.equal(await page.locator('.essay-list-link').count(), essays.length);
+    assert.ok((await page.locator('.essay-list-link').first().getAttribute('href')).includes('music-another-world'));
+    assert.ok(!(await page.locator('main').innerText()).includes('游戏设计'));
+    for (const [name, width, height] of [['desktop', 1440, 1000], ['mobile', 390, 844], ['small', 320, 700]]) {
+      await page.setViewportSize({ width, height });
+      await page.goto(base + '/articles/index.html', { waitUntil: 'networkidle' });
+      assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+      await page.screenshot({ path: path.join(output, 'articles-' + name + '.png'), fullPage: true });
+      for (const essay of essays) {
+        const response = await page.goto(base + '/articles/' + essay.slug + '.html', { waitUntil: 'networkidle' });
+        assert.equal(response.status(), 200);
+        assert.equal(await page.locator('.essay-header h1').innerText(), essay.title);
+        assert.equal(await page.locator('.essay-meta time').getAttribute('datetime'), essay.date);
+        assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), essay.title + ': overflow');
+        const rendered = (await page.locator('.essay-body').innerText()).replace(/\s+/g, '');
+        const plainParagraphs = essay.body.split('\n\n').filter(p => p.trim() && !/[<>*_#]|^>|^[-\d]+[).]/m.test(p));
+        for (const paragraph of plainParagraphs) {
+          assert.ok(rendered.includes(paragraph.replace(/\s+/g, '')), essay.title + ': missing original text');
+        }
+        assert.equal(await page.locator('.essay-source a').count(), essay.sourceUrl ? 1 : 0);
+        if (process.argv.includes('--versioned')) {
+          assert.match(await page.locator('link[rel="stylesheet"]').getAttribute('href'), /style\.[a-f0-9]+\.css$/);
+        }
+        if (essay.slug === 'music-another-world') {
+          await page.screenshot({ path: path.join(output, 'music-essay-' + name + '.png') });
+        }
+        if (essay.slug === 'gift-of-return') {
+          await page.locator('.essay-toc summary').click();
+          const target = await page.locator('.essay-toc a').first().getAttribute('href');
+          assert.equal(await page.locator(target).count(), 1);
+        }
+      }
+      console.log(name + ': ' + essays.length + ' complete articles, dates, directory, source links and responsive reading passed');
+    }
+    assert.deepEqual(errors, []);
   } finally {
     await browser.close();
   }

@@ -13,7 +13,8 @@ class VersionedAssetsPlugin {
         const stylesheet = compilation.getAssets().find((asset) => /^css\/style\.[a-f0-9]+\.css$/.test(asset.name));
         const script = compilation.entrypoints.get('app').getFiles().find((file) => /^js\/app\.[a-f0-9]+\.js$/.test(file));
         if (!stylesheet || !script) throw new Error('Versioned website assets are missing.');
-        for (const filename of ['index.html', 'blog/index.html']) {
+        const articlePages = compilation.getAssets().filter((asset) => /^articles\/[^/]+\.html$/.test(asset.name)).map(asset => asset.name);
+        for (const filename of ['index.html', 'blog/index.html', ...articlePages]) {
           const html = compilation.getAsset(filename).source.source().toString()
             .replaceAll('css/style.css', stylesheet.name)
             .replaceAll('js/app.js', script);
@@ -41,6 +42,7 @@ module.exports = merge(common, {
         { from: 'css/style.css', to: 'css/style.[contenthash:8].css' },
         { from: 'js/vendor', to: 'js/vendor' },
         { from: 'blog', to: 'blog' },
+        { from: 'articles', to: 'articles' },
         { from: 'icon.svg', to: 'icon.svg' },
         { from: 'favicon.ico', to: 'favicon.ico' },
         { from: 'robots.txt', to: 'robots.txt' },
