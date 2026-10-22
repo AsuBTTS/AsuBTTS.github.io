@@ -16,6 +16,10 @@ fs.mkdirSync(output, { recursive: true });
   const browser = await chromium.launch({ headless: true, channel: 'msedge' });
   try {
     const page = await browser.newPage();
+    if (process.argv.includes('--versioned')) {
+      await page.route('**/css/style.css', route => route.abort());
+      await page.route('**/js/app.js', route => route.abort());
+    }
     const errors = [];
     page.on('pageerror', error => { errors.push(error.message); console.error('Browser error:', error.message); });
     for (const [name, width, height] of [
@@ -23,6 +27,10 @@ fs.mkdirSync(output, { recursive: true });
     ]) {
       await page.setViewportSize({ width, height });
       await page.goto(base, { waitUntil: 'networkidle' });
+      if (process.argv.includes('--versioned')) {
+        assert.match(await page.locator('link[rel="stylesheet"]').getAttribute('href'), /style\.[a-f0-9]+\.css$/);
+        assert.match(await page.locator('script[src]').last().getAttribute('src'), /app\.[a-f0-9]+\.js$/);
+      }
       await page.evaluate(() => document.querySelectorAll('main img').forEach(img => { img.loading = 'eager'; }));
       await page.waitForFunction(() => [...document.querySelectorAll('main img')].every(img => img.complete && img.naturalWidth > 0));
       assert.equal(await page.locator('.hobby-gallery img').count(), 8);
