@@ -8,6 +8,11 @@ module.exports = merge(common, {
     liveReload: true,
     hot: true,
     open: true,
-    static: ['./'],
+    static: {
+      directory: __dirname,
+      watch: {
+        ignored: ['**/node_modules/**', '**/dist/**', '**/output/**', '**/.idea/**'],
+      },
+    },
   },
 });
