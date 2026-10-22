@@ -27,6 +27,13 @@ fs.mkdirSync(output, { recursive: true });
       await page.waitForFunction(() => [...document.querySelectorAll('main img')].every(img => img.complete && img.naturalWidth > 0));
       assert.equal(await page.locator('.hobby-gallery img').count(), 8);
       assert.equal(await page.locator('.photography-gallery img').count(), 2);
+      const games = await page.evaluate(() => {
+        const genshin = document.querySelector('.genshin-figure img').getBoundingClientRect();
+        const starRail = document.querySelector('.star-rail-figure img').getBoundingClientRect();
+        return { ratio: genshin.width / starRail.width, right: starRail.left >= genshin.right, heightDifference: Math.abs(genshin.height - starRail.height), portrait: starRail.height > starRail.width };
+      });
+      assert.ok(games.ratio >= 2.9 && games.right && games.portrait && games.heightDifference < 2, name + ': Genshin should dominate the left; Star Rail should be a right-hand portrait');
+      await page.locator('.game-gallery').screenshot({ path: path.join(output, 'games-' + name + '.png') });
       assert.ok(await page.locator('.hero-actions svg').count() === 2, 'Lucide icons should render');
       const layout = await page.evaluate(() => ({
         width: innerWidth,
@@ -51,6 +58,13 @@ fs.mkdirSync(output, { recursive: true });
       await page.keyboard.press('Escape');
       assert.equal(await page.locator('dialog[open]').count(), 0);
       assert.ok(await page.locator('[data-lightbox]').first().evaluate(el => el === document.activeElement));
+      await page.locator('.star-rail-figure [data-lightbox]').click();
+      await page.waitForFunction(() => {
+        const image = document.querySelector('.lightbox img');
+        return image.complete && image.naturalWidth / image.naturalHeight > 2;
+      });
+      assert.equal(await page.locator('.lightbox-counter').innerText(), '8 / 10');
+      await page.keyboard.press('Escape');
       await page.locator('.photography-gallery [data-lightbox]').first().click();
       assert.equal(await page.locator('.lightbox-counter').innerText(), '9 / 10');
       await page.keyboard.press('ArrowRight');

@@ -98,8 +98,9 @@ figcaption small { display: block; color: var(--body); font-size: 12px; margin-t
 .gallery-note { padding-top: 30px; color: var(--muted); font-size: 13px; }
 .gallery-note .eyebrow { font-size: 9px; }
 .gallery-note > span:last-child { color: #79bdb3; font: 32px/1 var(--mono); }
-.wide-figure { grid-column: span 2; }
-.wide-figure .image-button img { aspect-ratio: 2 / 1; object-fit: cover; }
+.game-gallery { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 3.8fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+.genshin-figure .image-button img { aspect-ratio: 16 / 9; object-fit: cover; }
+.star-rail-figure .image-button img { aspect-ratio: 80 / 171; object-fit: cover; object-position: 50% 50%; }
 .interest-list { justify-content: space-between; gap: 18px 26px; margin-left: 22px; }
 .interest-list li { display: flex; align-items: center; gap: 13px; color: var(--body); font-size: 12px; }
 .interest-list svg { color: var(--teal); }
@@ -193,7 +194,8 @@ figcaption small { display: block; color: var(--body); font-size: 12px; margin-t
   .one-piece-stack { grid-column: 1 / -1; }
   .one-piece-stack .image-button img { aspect-ratio: 5 / 3; object-fit: contain; }
   .gallery-note { display: none; }
-  .wide-figure { grid-column: 1 / -1; }
+  .game-gallery { grid-template-columns: minmax(0, 3fr) minmax(0, 1fr); gap: 12px; }
+  .star-rail-figure .image-button img { aspect-ratio: 16 / 27; }
   figcaption { font-size: 12px; }
   figcaption small { font-size: 11px; }
   .interest-list { margin-left: 0; display: grid; grid-template-columns: 1fr; gap: 16px; }
